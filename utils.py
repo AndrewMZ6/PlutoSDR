@@ -4,7 +4,7 @@ import config
 
 
 def detect_devices():
-    '''Detects'''
+    '''Detects plutos '''
 
     x = os.popen('iio_info -s').read()
     s = re.findall(r"serial=.*", x)
