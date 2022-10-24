@@ -7,16 +7,22 @@ def detect_devices():
     '''Detects plutos '''
 
     x = os.popen('iio_info -s').read()
-    s = re.findall(r"serial=.*", x)
+    s = re.findall(r"serial=(\w+)\s*\[(usb:.*)\]", x)
+    print(s)
     l = len(s)
+    print(f"Devices detected: {l}")
+
+    if not l:
+        return None
+    
+    assert l >= 1
+
     devices = {}
 
-    for i in range(l-1 if l > 1 else 1):
+    for device in s:
 
-        serial, usb = s[i].split(' ')
-        serail_number = serial.strip()[7:]   # remove 'serial='
-        usb_number = usb.strip()[1:-1]       # remove '[' and ']'
-        devices.update({config.devices[serail_number]:usb_number})
+        serial_number, usb_number = device
+        devices.update({config.devices[serial_number]:usb_number})
 
     return devices
 
