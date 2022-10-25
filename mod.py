@@ -49,3 +49,9 @@ class put_data_to_zeros:
         m = mods.max()
         time_samples = (time_samples/m)*(2**14)
         return time_samples
+
+
+def normalize_for_pluto(complex_time_data):
+    m = np.max(np.abs(complex_time_data))
+    normalized_complex_time_data = (complex_time_data/m)*(2**14)
+    return normalized_complex_time_data
