@@ -77,6 +77,7 @@ print(recv[:10])
 
 fs = config.SAMPLE_RATE
 spec = np.fft.fftshift(np.fft.fft(recv_n))
+f = np.linspace(-fs/2.0, fs/2.0, len())
 #plt.scatter(recv_n.real, recv_n.imag)
 plt.plot(np.abs(spec))
 plt.show()
