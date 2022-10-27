@@ -9,7 +9,6 @@ import utils
 from devexceptions import NoDeviceFoundException
 
 
-
 # find connected devices
 devices = utils.detect_devices()
 
@@ -20,18 +19,6 @@ if devices is None:
 bits = mod.create_bits(1024)
 mod_data = mod.qpsk_modualte(bits)
 mod_data_n = mod.normalize_for_pluto(mod_data)
-
-
-#print(mod_data[:10], '\n', mod_data_n[:10])
-# OUTPUT:
-#[ 1.-1.j -1.-1.j  1.+1.j  1.+1.j  1.+1.j  1.-1.j -1.-1.j -1.+1.j  1.-1.j
-#  1.-1.j] 
-# [ 11585.23750296-11585.23750296j -11585.23750296-11585.23750296j
-#  11585.23750296+11585.23750296j  11585.23750296+11585.23750296j
-#  11585.23750296+11585.23750296j  11585.23750296-11585.23750296j
-# -11585.23750296-11585.23750296j -11585.23750296+11585.23750296j
-#  11585.23750296-11585.23750296j  11585.23750296-11585.23750296j]
-
 
 
 rr = len(mod_data_n)
@@ -58,11 +45,36 @@ sdr2.gain_control_mode_chan0 = 'manual'
 sdr2.rx_hardwaregain_chan0 = 0.0
 
 
-
 sdr.tx(mod_data_n)
-sleep(3)
-recv = sdr2.rx()
 
+#for freq in 
+req = recv = sdr2.rx()
+
+# normalization
+m = np.max(np.abs(recv))
+recv = recv/m
+recv = recv
+
+
+fs = config.SAMPLE_RATE
+f = np.linspace(-fs/2.0, fs/2.0, len(recv))
+cor = np.correlate(req, mod_data_n, 'full')
+
+fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2)
+
+ax1.scatter(recv.real, recv.imag)
+ax1.grid()
+ax2.plot(f, np.abs(np.fft.fftshift(np.fft.fft(recv))))
+ax2.grid()
+ax3.plot(np.abs(cor))
+ax3.grid()
+plt.show()
+
+
+sdr.tx_destroy_buffer()
+sdr2.rx_destroy_buffer()
+
+exit()
 
 # normalize recv
 mm = np.max(np.abs(recv))
