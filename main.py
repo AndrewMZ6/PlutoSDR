@@ -49,10 +49,10 @@ axs1[1].set_title('constellation')
 for i in axs1: i.grid()
 
 
-sdrtx = adi.Pluto(devices['NOBEARD'])
+sdrtx = adi.Pluto(devices['BEARD'])
 if mode != 'single':
     # creating sdr instances
-    sdrrx = adi.Pluto(devices['BEARD'])
+    sdrrx = adi.Pluto(devices['NOBEARD'])
 else:
     sdrrx = sdrtx
 
@@ -76,7 +76,7 @@ sdrrx.rx_hardwaregain_chan0 = 0.0
 # transmission
 sdrtx.tx(time_sig)
 
-
+sleep(3)
 # receiving
 data_recv = sdrrx.rx()
 recv_len = len(data_recv)
@@ -159,11 +159,22 @@ part1_spce = np.fft.fftshift(np.fft.fft(part1))
 ax[1][1].scatter(part1_spce.real, part1_spce.imag, color=scatter_color, marker='.')
 ax[1][1].set_title('part1 before freq ')
 
-
+'''
+# variant 1
 fftsize = config.FOURIER_SIZE
 ang = np.angle(complex_max)
 for i in range(len(part1)):
     part1[i] = part1[i]*np.exp(1j*i*(ang/fftsize))
+'''
+
+# variant2
+dphi = np.angle(complex_max)
+dt = 1/fs
+tau = config.FOURIER_SIZE*dt
+ocen_freq = dphi/(2*np.pi*tau)
+dphi_ocen = (ocen_freq*2*np.pi)/fs
+for i in range(len(part1)):
+    part1[i] = part1[i]*np.exp(1j*i*(-dphi_ocen))
 
 
 #eq = part1/time_sig[:1024]
@@ -171,6 +182,7 @@ for i in range(len(part1)):
 eq = np.load(r"/media/andrew/PlutoSDR/eq.npy")
 eqed = part1/eq
 eqedspec = np.fft.fftshift(np.fft.fft(eqed))
+
 
 
 part1 = np.fft.fftshift(np.fft.fft(part1))
@@ -181,18 +193,18 @@ ax[1][0].set_title('part1')
 for i in ax: i[0].grid(); i[1].grid()
 
 
+sdrtx.tx_destroy_buffer()
+sdrrx.rx_destroy_buffer()
+plt.show()
 
+exit()
 
 fig6, ax = plt.subplots()
 ax.scatter(eqedspec.real, eqedspec.imag, color=scatter_color,marker='.')
 ax.set_title('eqed')
 
 
-sdrtx.tx_destroy_buffer()
-sdrrx.rx_destroy_buffer()
-plt.show()
 
-exit()
 eq = []
 axs[0][0].scatter(d.real, d.imag)
 axs[0][0].set_title('d.real, d.imag')
