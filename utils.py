@@ -1,14 +1,14 @@
 import os
 import re
 import config
+import asyncio
 
 
-def detect_devices():
+async def detect_devices():
     '''Detects plutos '''
 
     x = os.popen('iio_info -s').read()
     s = re.findall(r"serial=(\w+)\s*\[(usb:.*)\]", x)
-    print(s)
     l = len(s)
     print(f"Devices detected: {l}")
 
@@ -28,4 +28,4 @@ def detect_devices():
 
 
 if __name__ == '__main__':
-    print(detect_devices())
+    print(asyncio.run(detect_devices()))
