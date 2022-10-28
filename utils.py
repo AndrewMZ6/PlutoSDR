@@ -1,10 +1,10 @@
 import os
 import re
 import config
-import asyncio
 
 
-async def detect_devices():
+
+def detect_devices():
     '''Detects plutos '''
 
     x = os.popen('iio_info -s').read()
@@ -28,4 +28,4 @@ async def detect_devices():
 
 
 if __name__ == '__main__':
-    print(asyncio.run(detect_devices()))
+    print(detect_devices())
