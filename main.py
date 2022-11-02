@@ -7,8 +7,7 @@ import mod
 import config
 import utils
 from devexceptions import NoDeviceFoundException
-import scipy.signal as sigs
-import asyncio
+import dprocessing as dp
 
 
 # initializing constants
@@ -20,58 +19,66 @@ fftsize     = config.FOURIER_SIZE
 scatter_color       = '#006699'
 spectrum_color      = '#b35900'
 correlation_color   = '#26734d'
+spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # swap transmitter and receiver
-transmitter, receiver = receiver, transmitter
+#transmitter, receiver = receiver, transmitter
 
 
 # find connected devices
-devices = asyncio.run(utils.detect_devices())
+devices = utils.detect_devices()
 if devices is None:
     raise NoDeviceFoundException('No connected devices found')
 
 
 # create and modulate random bits
-preambula_bits = mod.create_bits(config.BIT_SIZE)
-preamula_modulated = mod.qpsk_modualte(preambula_bits)
+preambula = mod.get_preambula()
 
 
 # create spectrum and time samples
-preambula_spectrum = mod.put_data_to_zeros(config.FOURIER_SIZE, config.GUARD_SIZE, preamula_modulated)
-preambula_time_domain = preambula_spectrum.get_time_samples()
+preambula_spectrum = preambula.get_spectrum()
+preambula_time_domain = preambula.get_time_samples()
 preambula_time_domain = np.append(preambula_time_domain, preambula_time_domain)
 preambula_length = len(preambula_time_domain)
 print(f"preambula length: {preambula_length}")
-preambula_spectum_for_plot = np.fft.fftshift(np.fft.fft(preambula_time_domain))
+preambula_spectum_for_plot = spectrum_and_shift(preambula_time_domain)
 
 
-# data payload
-data_bits = mod.create_bits(config.BIT_SIZE)
-data_modulated = mod.qpsk_modualte(data_bits)
+tx_signal = np.array([])
+for _ in range(5):
+    # data payload
+    data_bits = mod.create_bits(config.BIT_SIZE)
+    data_modulated = mod.qpsk_modualte(data_bits)
 
 
-# create spectrum and time samples
-data_spectrum = mod.put_data_to_zeros(config.FOURIER_SIZE, config.GUARD_SIZE, data_modulated)
-data_time_domain = data_spectrum.get_time_samples()
-tx_signal = np.append(preambula_time_domain, data_time_domain)
+    # create spectrum and time samples
+    data_spectrum = mod.put_data_to_zeros(config.FOURIER_SIZE, config.GUARD_SIZE, data_modulated)
+    data_time_domain = data_spectrum.get_time_samples()
+    tx_signal = np.append(tx_signal, data_time_domain)
+
+
+reference_data = tx_signal
+tx_signal = np.append(preambula_time_domain, tx_signal)
 sig_len = len(tx_signal)
 print(f'transmitted signal length: {sig_len}')
 
 
-assert (tx_signal[fftsize*2:] == data_time_domain).all(), 'txsignal is wrong!'
-assert (preambula_time_domain[:1024] == preambula_time_domain[1024:2048]).all(), 'preambulas part1 and 2 are different!'
+#assert (tx_signal[fftsize*2:] == data_time_domain).all(), 'txsignal is wrong!'
+#assert (preambula_time_domain[:1024] == preambula_time_domain[1024:2048]).all(), 'preambulas part1 and 2 are different!'
+print(tx_signal[:20])
 
-
-'''
+spec = data_spectrum.get_spectrum()
+nums = utils.remove_spectrum_zeros(data_time_domain)
 # original signal graphs
-fig1, axs1 = plt.subplots(1, 2)
-axs1[0].plot(np.abs(spec_pream), spectrum_color)
-axs1[0].set_title('generated sig')
-axs1[1].scatter(spec_pream.real, spec_pream.imag, color=scatter_color)
-axs1[1].set_title('constellation')
-for i in axs1: i.grid()
-'''
+fig1, axs1 = plt.subplots(2, 2)
+axs1[0][0].plot(np.abs(spec), spectrum_color)
+axs1[0][0].set_title('generated sig')
+axs1[0][1].scatter(spec.real, spec.imag, color=scatter_color)
+axs1[0][1].set_title('constellation')
+axs1[1][0].plot(np.abs(nums))
+for i in axs1: i[0].grid(); i[1].grid()
+
 
 
 sdrtx = adi.Pluto(devices[transmitter])
@@ -111,12 +118,8 @@ print(f"recieved data length = {recived_data_length}")
 spectrum_data_recived = np.fft.fftshift(np.fft.fft(data_recieved))
 
 
-# correlation 
-first_correlation = np.correlate(data_recieved, tx_signal, 'full')
-abs_first_correlation = np.abs(first_correlation)
-x_coord_max_first_correlation = abs_first_correlation.argmax(axis=0)
-print(f"first correlation length: {len(first_correlation)}")
-
+# first correlation 
+cutted, abs_first_correlation = dp.correlation(preambula_time_domain, data_recieved, 10000)
 
 # received spec, constellation and correlation graphs
 fig2, axs = plt.subplots(2, 2)
@@ -130,27 +133,11 @@ axs[1][0].set_title('correlation')
 for i in axs: i[0].grid(); i[1].grid()
 
 
-q = 0
-# define left and right cutoff indexes
-print(f"first correlation max index: {x_coord_max_first_correlation}")
 
-
-if x_coord_max_first_correlation: # <= recived_data_length - sig_len:
-    print("if works here")
-    right_index = x_coord_max_first_correlation + q
-    left_index = right_index - sig_len 
-    print(f"cutting left index: {left_index}")
-    print(f"cutting right index: {right_index}")
-else:
-    print("else works here")
-    left_index = np.abs(lags[x_coord_max_first_correlation]) - sig_len + q
-    right_index = left_index + sig_len 
-    print(f"cutting left index: {left_index}")
-    print(f"cutting right index: {right_index}")
 
 
 # cutting off
-cut_data = data_recieved[left_index:right_index]
+cut_data = cutted
 cut_data_spec = np.fft.fftshift(np.fft.fft(cut_data))
 
 
@@ -172,8 +159,6 @@ for i in axs: i[0].grid(); i[1].grid()
 
 # correlating part1 and part2 of cutted data
 part1, part2, data = cut_data[:1024], cut_data[1024:2048], cut_data[2048:]
-
-spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 
@@ -208,15 +193,14 @@ ax4[1][1].set_title('part1 before freq ')
 
 
 
-'''# variant 1
-
+# variant 1
 ang = np.angle(complex_max)
 print(f"angle: {ang}")
 for i in range(len(data)):
     data[i] = data[i]*np.exp(-1j*i*(ang/fftsize))
+
+
 '''
-
-
 # variant2
 dphi = np.angle(complex_max)
 dt = 1/fs
@@ -227,12 +211,12 @@ dphi_ocen = (ocen_freq*2*np.pi)/fs
 
 for i in range(len(data)):
     data[i] = data[i]*np.exp(1j*i*(-dphi_ocen))
+'''
 
 
 
-#eq = preambula_time_domain[:1024]/part1 
-eq = spectrum_and_shift(preambula_time_domain[1024:2048])/spectrum_and_shift(part2)
-data_eq = spectrum_and_shift(data)*eq
+eq = utils.equalize(preambula_time_domain[1024:2048], part2)
+data_eq = utils.remove_spectrum_zeros(data)*eq
 #np.save(r"/media/andrew/PlutoSDR/eq.npy", eq)
 #eq = np.load(r"/media/andrew/PlutoSDR/eq.npy")
 #eqed = part1/eq
@@ -240,13 +224,16 @@ data_eq = spectrum_and_shift(data)*eq
 
 
 
-data_eq_spectrum_shifted = spectrum_and_shift(data_eq)
+data_eq_spectrum_shifted = data_eq
 ax4[0][1].plot(np.abs(data_eq), spectrum_color)
 ax4[0][1].set_title('data_eq_spectrum_shifted')
 ax4[1][0].scatter(data_eq.real, data_eq.imag, color=scatter_color,marker='.')
 ax4[1][0].set_title('data_eq_spectrum_shifted constellation')
 for i in ax4: i[0].grid(); i[1].grid()
 
+fig9, ax9 = plt.subplots(1, 2)
+ax9[0].plot(np.abs(data_eq))
+ax9[1].plot(np.abs(spectrum_and_shift(data)))
 
 
 plt.show()

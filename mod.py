@@ -2,6 +2,24 @@ from operator import mod
 import commpy as cp
 import numpy as np
 from matplotlib import pyplot as plt
+import string
+
+
+
+
+def create_bit_sequence_from_letters(t: tuple) -> np.ndarray:
+    '''Returns concatenated numpy array from input tuple.
+        ('01101000', '01100101') -> array([0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1])'''
+
+    result = np.array([])
+
+    for letters in t:
+        nparr = np.fromiter(letters, dtype=int)
+        result = np.append(result, nparr)
+    
+
+    result = np.array(result, dtype=int)
+    return result
 
 
 def create_bits(size):
@@ -16,6 +34,7 @@ def qpsk_modualte(bits):
 def qpsk_demodulate(complex_data):
     qpsk = cp.modulation.QAMModem(4)
     return qpsk.demodulate(complex_data, 'hard')
+
 
 def _zeros(size):
     return np.zeros(size, dtype=complex)
@@ -55,3 +74,19 @@ def normalize_for_pluto(complex_time_data):
     m = np.max(np.abs(complex_time_data))
     normalized_complex_time_data = (complex_time_data/m)*(2**14)
     return normalized_complex_time_data
+
+
+def get_preambula():
+    preambula_word = string.printable + string.ascii_letters + string.printable[::-1]
+
+    # converts ascii letters to binary strings. 'he' -> ('01101000', '01100101')
+    mapped = tuple(map(lambda x: f"{ord(x):08b}", preambula_word))
+    pream_bits = create_bit_sequence_from_letters(mapped)
+    q = qpsk_modualte(pream_bits)
+    pre = put_data_to_zeros(1024, 100, q)
+    return pre
+
+
+if __name__ == '__main__':
+    
+    pass

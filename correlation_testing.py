@@ -21,7 +21,7 @@ print(f"conc length {len(conc)}")
 convo = np.convolve(signal[::-1], conc)
 print(f"convo length: {len(convo)} of type {type(convo[10])}")
 
-corr = np.correlate(conc, signal, 'full')
+corr = np.correlate(signal, conc, 'full')
 print(f"corr length: {len(corr)} of type {type(corr[10])}")
 
 fig, (ax1, ax2) = plt.subplots(2, 2)
