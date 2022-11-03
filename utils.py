@@ -40,16 +40,33 @@ def equalize(transmitted_sig, received_sig):  #input signals in time domain
     return eq
 
 
-
-
 def remove_spectrum_zeros(time_domain_sig: np.ndarray) -> np.ndarray:
     '''Removes guards intervals and central zero sample. Returns spectrum samples'''
+    
+    if len(time_domain_sig) > 1024:
 
-    spectrum = spectrum_and_shift(time_domain_sig)
-    left_part = spectrum[100:int(1024/2)] 
-    right_part = spectrum[int(1024/2)+1:924+1]
 
-    result = np.concatenate((left_part, right_part))
+        part1, part2, part3, part4, part5 = time_domain_sig[:1024], time_domain_sig[1024:2048], time_domain_sig[2048:3072], time_domain_sig[3072:4096], time_domain_sig[4096:]
+        t = (part1, part2, part3, part4, part5)
+        result = []
+        for part in t:
+            spectrum = spectrum_and_shift(part)
+        
+        
+        
+            left_part = spectrum[100:int(1024/2)] 
+            right_part = spectrum[int(1024/2)+1:924+1]
+            result.append(np.concatenate((left_part, right_part)))
+
+    else:
+        spectrum = spectrum_and_shift(time_domain_sig)
+        
+               
+        left_part = spectrum[100:int(1024/2)] 
+        right_part = spectrum[int(1024/2)+1:924+1]
+        return np.concatenate((left_part, right_part))
+
+    
     return result
 
 
