@@ -36,6 +36,9 @@ def qpsk_demodulate(complex_data):
     return qpsk.demodulate(complex_data, 'hard')
 
 
+#def qpsk_demod2(complex_data)
+
+
 def _zeros(size):
     return np.zeros(size, dtype=complex)
 

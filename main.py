@@ -49,11 +49,15 @@ fig12, ax12 = plt.subplots()
 ax12.plot(np.abs(np.correlate(preambula_time_domain[:1024], preambula_time_domain[1024:], 'full')))
 
 tx_signal = np.array([])
+
 for _ in range(5):
     # data payload
-    data_bits = mod.create_bits(config.BIT_SIZE)
-    data_modulated = mod.qpsk_modualte(data_bits)
+    data_bits = mod.create_bits(config.BIT_SIZE)[:1648]
+    
 
+    data_modulated = mod.qpsk_modualte(data_bits)
+    if _ == 0:
+        data_compare = data_bits
 
     # create spectrum and time samples
     data_spectrum = mod.put_data_to_zeros(config.FOURIER_SIZE, config.GUARD_SIZE, data_modulated)
@@ -248,7 +252,11 @@ data_eq = utils.remove_spectrum_zeros(data2)
 
 s = []
 for spectrum in data_eq:
-    s.append(spectrum*eq)
+    q = spectrum*eq
+    q_abs = np.abs(q)
+    m = np.max(q_abs)
+    q_normilized = (q/m)*1.4142
+    s.append(q_normilized)
 #np.save(r"/media/andrew/PlutoSDR/eq.npy", eq)
 #eq = np.load(r"/media/andrew/PlutoSDR/eq.npy")
 #eqed = part1/eq
@@ -279,6 +287,11 @@ for i in range(5):
             ax10[i][j].set_title(f's[{i}]')
         ax10[i][j].grid()
 
+
+demod_data = mod.qpsk_demodulate(s[0])
+print(f"demod_data len = {len(demod_data)}")
+print(demod_data[:10])
+print(data_compare[:10])
 
 plt.show()
 sdrtx.tx_destroy_buffer()
