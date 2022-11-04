@@ -4,14 +4,17 @@ from matplotlib import pyplot as plt
 import utils
 from matplotlib.animation import FuncAnimation
 import time
+import threading
 
 
 
-phi = np.linspace(0, 10, 1000)
+phi = np.linspace(0, np.pi/2, 100)
 c = np.array([1+1j, 1-1j, -1+1j, -1-1j])*np.exp(-1j*2)
 
 
 fig, (ax1, ax2) = plt.subplots(1, 2)
+fig.set_facecolor(color='#a4a4c1',)
+ax1.set_facecolor(color='#d1d1e0'); ax2.set_facecolor(color='#d1d1e0')
 ax1.grid()
 scat = ax1.scatter(c.real, c.imag)
 
@@ -34,22 +37,11 @@ def update_scatter(frames, scat):
 
     return scat, 
 
-'''plt.ion()
 
-
-
-
-for i in phi:
-    c = np.array([1+1j, 1-1j, -1+1j, -1-1j])*np.exp(-1j*i)
-
-    scat.set_offsets((c.real, c.imag))
-    plt.draw()
-    plt.gcf().canvas.flush_events()
-
-    time.sleep(0.5)
-
-
-plt.ioff()'''
+def ff():
+    for i in range(10):
+        print(i)
+        time.sleep(2)
 
 
 animation = FuncAnimation(
@@ -57,7 +49,7 @@ animation = FuncAnimation(
     func=update_scatter,
     frames = phi,
     fargs=(scat, ),
-    interval=30,
+    interval=10,
     blit=True,
     repeat=True)
 
@@ -66,8 +58,16 @@ animation2 = FuncAnimation(
     fig,
     func=update_plot,
     fargs=(line, ),
-    interval=30,
+    interval=10,
     blit=True,
     repeat=True)
 
+
+t = threading.Thread(target=ff)
+t.start()
+
+
 plt.show()
+
+
+
