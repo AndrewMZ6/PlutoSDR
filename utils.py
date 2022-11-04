@@ -70,6 +70,17 @@ def remove_spectrum_zeros(time_domain_sig: np.ndarray) -> np.ndarray:
     return result
 
 
+def cut_data_from_spectrum(fftsize: int, guardsize: int, spectrum: np.ndarray) -> np.ndarray:
+    
+    central_zero_index = int(fftsize/2)
+    left_part = spectrum[guardsize:central_zero_index]
+    right_part = spectrum[central_zero_index + 1:fftsize - (guardsize - 1)]
+
+    result = np.concatenate((left_part, right_part))
+
+    assert len(result) == fftsize - 2*guardsize, 'the cutted data has wrong size'
+
+    return result
 
 
 
