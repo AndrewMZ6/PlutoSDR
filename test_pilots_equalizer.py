@@ -63,8 +63,7 @@ animation2 = FuncAnimation(
     repeat=True)
 
 
-t = threading.Thread(target=ff)
-t.start()
+
 
 
 plt.show()

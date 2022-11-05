@@ -41,7 +41,11 @@ def equalize(transmitted_sig, received_sig):  #input signals in time domain
 
 
 def remove_spectrum_zeros(time_domain_sig: np.ndarray) -> np.ndarray:
-    '''Removes guards intervals and central zero sample. Returns spectrum samples'''
+    '''
+        Removes guards intervals and central zero sample. Returns spectrum samples
+
+        function 'cut_data_from_spectrum' now does this so... ???
+    '''
     
     if len(time_domain_sig) > 1024:
 
@@ -71,6 +75,14 @@ def remove_spectrum_zeros(time_domain_sig: np.ndarray) -> np.ndarray:
 
 
 def cut_data_from_spectrum(fftsize: int, guardsize: int, spectrum: np.ndarray) -> np.ndarray:
+    '''
+        Cuts data complex vectors from input spectum using fftsize and guardsize.
+        Expects frequency domain spectrum as input variable 'spectrum'.
+        Returns frequency domain complex vectors without guard zeros and central zero
+
+        _|-|-|_   ->  cut_data_from_spectrum  ->  --
+    '''
+
     
     central_zero_index = int(fftsize/2)
     left_part = spectrum[guardsize:central_zero_index]
@@ -81,6 +93,10 @@ def cut_data_from_spectrum(fftsize: int, guardsize: int, spectrum: np.ndarray) -
     assert len(result) == fftsize - 2*guardsize, 'the cutted data has wrong size'
 
     return result
+
+
+
+
 
 
 

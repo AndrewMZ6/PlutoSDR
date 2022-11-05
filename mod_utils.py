@@ -13,37 +13,58 @@ fftsize = 1024
 guardsize = 100
 
 
-def modulate(bits, fftsize=1024, guardsize=100, modulation_index=4):
-    '''The function converts and array of bits into a sequence of 
+
+
+
+def modulate(bits: np.ndarray, fftsize=1024, guardsize=100, modulation_index=4) -> tuple[np.ndarray, int]:
+    '''
+        The function converts and array of input bits 'bits' into a sequence of 
         ofdm symbols. Number of ofdm symbols and the size of one symbol
-        depends on the input arguments'''
+        depends on the input arguments
+
+
+        010100011011101...  ->  modulate  ->  np.array([1+1j, 1-1j, -1-1j, ... ])
+    '''
 
 
     # {modulation index: number of bits per complex vector}
     bits_per_complex_vector = {4: 2, 16: 4}
 
+
     # available number of complex data vectors
-    complex_vectors_number_per_ofdm_symbol = fftsize - guardsize*2       # in reality the right guard has 1 less zero than the left one, but we also consider the carrier frequency zero
+    complex_vectors_number_per_ofdm_symbol = fftsize - guardsize*2       # in reality the right guard has 1 less zero than the left one,
+                                                                         # but we also consider the carrier frequency zero
 
 
     # available number of bits that could contains in one ofdm symbol
     bits_per_one_ofdm_symbol = bits_per_complex_vector[modulation_index]*complex_vectors_number_per_ofdm_symbol
 
+
     # stop executon if not enough input bits for creating at least one ofdm symbol
     assert len(bits) >= bits_per_one_ofdm_symbol, f'too few bits for one ofdm symbol, bits number must be not less than {bits_per_one_ofdm_symbol}'
 
+
+    # calculate number of full OFDM symbols that can be formed out of input bits
     number_of_ofdm_symbols = len(bits)//bits_per_one_ofdm_symbol
-    print(f'number of ofdm symbols: {number_of_ofdm_symbols}')
-    print(f"number of complex vectors={complex_vectors_number_per_ofdm_symbol*number_of_ofdm_symbols}, number of available bits={bits_per_one_ofdm_symbol*number_of_ofdm_symbols}")
+    
+    
+    # cut bits that are suitable for forming the wholesome OFDM symbol
     available_bits = bits[:bits_per_one_ofdm_symbol*number_of_ofdm_symbols]
 
+
+    # create modulator
     qam_modulator = cp.modulation.QAMModem(modulation_index)
+
+
+    # modulate the part of 'bits' that are cutted
     mod = qam_modulator.modulate(available_bits)
+
+
+
     return mod, number_of_ofdm_symbols
 
 
-mod, n = modulate(bits, modulation_index=16)
-print(f"mod length: {len(mod)}, mod type: {type(mod)}")
+
 
 
 def define_spectrum_data_indexes(fftsize=1024, guardsize=100):
@@ -56,18 +77,20 @@ def define_spectrum_data_indexes(fftsize=1024, guardsize=100):
 
         Usage example: 
 
-            l, r = define_spectrum_data_indexes(fftsize=512, guardsize=100)
+            left_indexes, right_indexes = define_spectrum_data_indexes(fftsize=512, guardsize=100)
+
+
             spectrum = numpy.zeros(512)
-            spectrum[l] = complex_vectors_before_central_zero
-            spectrum[r] = complex_vectors_after_central_zero
+            spectrum[left_indexes] = complex_vectors_before_central_zero
+            spectrum[right_indexes] = complex_vectors_after_central_zero
 
         OR
 
-            for i, index in enumerate(l):
+            for i, index in enumerate(left_indexes):
                 spectrum[index] = complex_vectors_before_central_zero[i]
 
-            for j, index in enumerate(l):
-                spectrum[index] = complex_vectors_before_central_zero[j]
+            for j, index in enumerate(right_indexes):
+                spectrum[index] = complex_vectors_before_central_zero[i + 1 + j]
     '''
 
 
@@ -83,8 +106,24 @@ def define_spectrum_data_indexes(fftsize=1024, guardsize=100):
     return left_data_indexes, right_data_indexes
 
 
-l, r = define_spectrum_data_indexes(fftsize=512)
-print(l[0], tuple(r[:5]))
+
+
+def put_spectrum_pilots(left_indexes: range, right_indexes: range, fftsize: int, pilot_step: 5):
+    '''
+        Puts pilots into zero-spectrum using left and right indexes and pilot step.
+        
+        How the function works:
+            1. Create numpy.zeros array with length of 'fftsize'
+            2. Iterate thought it using 'left_indexes' and 'right_indexes'
+            3. Put pilot if i % pilot_step == 0
+    '''
+
+
+
+
+
+
+
 
 
 # testing
