@@ -19,7 +19,6 @@ def create_bit_sequence_from_letters(t: tuple) -> np.ndarray:
         nparr = np.fromiter(letters, dtype=int)
         result = np.append(result, nparr)
     
-
     result = np.array(result, dtype=int)
     return result
 
@@ -28,7 +27,13 @@ def create_bits(size):
     return np.random.randint(low=0, high=2, size=size)
 
 
-def qpsk_modualte(bits):
+def qpsk_modualte(bits: np.ndarray) -> np.ndarray:
+    '''
+        Modulates input bits 'bits'.
+        Returns numpy array of complex vectors.
+
+            [0, 1, 0, 0, 1, ...]  ->  [1+1j, 1-1j, -1+1j, ...]
+    '''
     qpsk = cp.modulation.QAMModem(4)
     return qpsk.modulate(bits)
 
@@ -45,17 +50,28 @@ def qpsk_demodulate(complex_data: np.ndarray) -> np.ndarray:
     return qpsk.demodulate(complex_data, 'hard')
 
 
-#def qpsk_demod2(complex_data)
+
 
 
 def _zeros(size):
     return np.zeros(size, dtype=complex)
 
 
-class put_data_to_zeros:
+class PutDataToZeros:
+    '''
+        Accepts complex vectors (which are modulated bits).
+
+            method: get_spectrum()
+                Places complex vectors into zeros array,
+                thus creating OFDM spectrum
+
+            method: get_time_samplex()
+                1. calls get_spectrum() to create OFDM spectrum
+                2. fftshifts it
+                3. makes inverse FFT to get time samplex
+                4. normalizes the time samples
     '''
 
-    '''
 
     def __init__(self, N_fourier: int, Guard_size: int, mod_data: np.ndarray) -> None:
         self.N_fourier = N_fourier
@@ -69,7 +85,8 @@ class put_data_to_zeros:
         self.mod_data = mod_data[:self.N_complex_vectors]
 
     
-    def get_spectrum(self):
+    def get_spectrum(self) -> np.ndarray:
+
         spec = _zeros(self.N_fourier)
         
         left_point = self.Guard_size
@@ -77,25 +94,23 @@ class put_data_to_zeros:
         spec[left_point:self.zero_index] = self.mod_data[:r]
         spec[self.zero_index+1:self.N_fourier - (self.Guard_size - 1)] = self.mod_data[r:]
 
-        # If we want to change central zero 
-        # spec[self.zero_index] = 1+ 1j
         return spec
     
-    def get_time_samples(self):
+    def get_time_samples(self) -> np.ndarray:
         time_samples = np.fft.ifft(np.fft.fftshift(self.get_spectrum()))
-        mods = np.absolute(time_samples)
-        m = mods.max()
-        time_samples = (time_samples/m)*(2**14)
+        time_samples = _normalize_for_pluto(time_samples)
+
         return time_samples
 
 
-def normalize_for_pluto(complex_time_data):
+def _normalize_for_pluto(complex_time_data):
+
     m = np.max(np.abs(complex_time_data))
     normalized_complex_time_data = (complex_time_data/m)*(2**14)
     return normalized_complex_time_data
 
 
-def get_preambula() -> put_data_to_zeros:
+def get_preambula() -> PutDataToZeros:
     '''
         Returns instance of preambula 'pre'. 
         The instance has methods to generate time dommain complex vectors
@@ -106,12 +121,21 @@ def get_preambula() -> put_data_to_zeros:
     mapped = tuple(map(lambda x: f"{ord(x):08b}", preambula_word))
     pream_bits = create_bit_sequence_from_letters(mapped)
     q = qpsk_modualte(pream_bits)
-    pre = put_data_to_zeros(1024, 100, q)
+    pre = PutDataToZeros(1024, 100, q)
 
 
     return pre
 
 
 if __name__ == '__main__':
+    pre = get_preambula()
+    pre_spec = pre.get_spectrum()
+
+    fig, (ax1, ax2) = plt.subplots(2, 2)
+    ax1[0].scatter(pre_spec.real, pre_spec.imag)
+    ax1[1].plot(np.abs(pre_spec))
+
     
-    pass
+
+
+    plt.show()

@@ -25,11 +25,13 @@ def correlation(reference, received, shift):
 
     # cut index validation
 
-
+    '''
     # if left spike if found as maximum, make the right spike new maximum
     if (abs_corr[max_x]*0.8) > abs_corr[max_x - pream_length]:
         print(f"left index IF works, found max: {max_x}")
         max_x += pream_length
+    '''
+
     
     print(f"found corr max: {max_x}")
 

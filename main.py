@@ -24,7 +24,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # swap transmitter and receiver
-transmitter, receiver = receiver, transmitter
+#transmitter, receiver = receiver, transmitter
 
 
 # find connected devices
@@ -60,7 +60,7 @@ for _ in range(5):
         data_compare = data_bits
 
     # create spectrum and time samples
-    data_spectrum = mod.put_data_to_zeros(config.FOURIER_SIZE, config.GUARD_SIZE, data_modulated)
+    data_spectrum = mod.PutDataToZeros(config.FOURIER_SIZE, config.GUARD_SIZE, data_modulated)
     data_time_domain = data_spectrum.get_time_samples()
     tx_signal = np.append(tx_signal, data_time_domain)
 
@@ -118,6 +118,7 @@ sdrtx.tx(tx_signal)
 # receiving
 data_recieved = sdrrx.rx()
 recived_data_length = len(data_recieved)
+print(type(data_recieved))
 print(f"recieved data length = {recived_data_length}")
 print(f"received data: {data_recieved[1000:1010]}")
 
@@ -290,6 +291,7 @@ for i in range(5):
 
 demod_data = mod.qpsk_demodulate(s[0])
 print(f"demod_data len = {len(demod_data)}")
+print(f"complex vectors = {s[0][:10]}")
 print(demod_data[:10])
 print(data_compare[:10])
 

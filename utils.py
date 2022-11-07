@@ -5,7 +5,7 @@ import numpy as np
 
 
 
-def detect_devices():
+def detect_devices() -> dict | None:
     '''Detects plutos '''
 
     x = os.popen('iio_info -s').read()
@@ -30,8 +30,12 @@ def detect_devices():
 
 
 spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
+
+
 def equalize(transmitted_sig, received_sig):  #input signals in time domain
-    '''Makes channel estimation and returns estimation array'''
+    '''
+        Makes channel estimation and returns estimation array
+    '''
 
     transmitted_data = remove_spectrum_zeros(transmitted_sig)
     received_data = remove_spectrum_zeros(received_sig)
@@ -43,7 +47,6 @@ def equalize(transmitted_sig, received_sig):  #input signals in time domain
 def remove_spectrum_zeros(time_domain_sig: np.ndarray) -> np.ndarray:
     '''
         Removes guards intervals and central zero sample. Returns spectrum samples
-
         function 'cut_data_from_spectrum' now does this so... ???
     '''
     
@@ -80,7 +83,7 @@ def cut_data_from_spectrum(fftsize: int, guardsize: int, spectrum: np.ndarray) -
         Expects frequency domain spectrum as input variable 'spectrum'.
         Returns frequency domain complex vectors without guard zeros and central zero
 
-        _|-|-|_   ->  cut_data_from_spectrum  ->  --
+        _|-|-|_   ->   --
     '''
 
     
