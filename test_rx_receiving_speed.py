@@ -38,13 +38,20 @@ sleep(2)
 
 start = time()
 
-for i in range(10):
+
+n = 10
+for i in range(n):
     if not i:
         c = time()
 
     data = sdrrx.rx()
 
 end = time()
-print(end - start)
-print(c - start)
-print(len(data))
+print(f"time of {n} iterations: {end - start:.4f} seconds")
+print(f"time of one measured operation {c - start:.7f} seconds")
+print(f"time of one calculated operation {(end - start)/n:.4f}")
+print(f"received data length: {len(data)}")
+
+
+speed = config.COMPLEX_SAMPLES_NUMBER/((end - start)/n)
+print(f"estimated recieving speed {speed:.2f} complex vectors per second")
