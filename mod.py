@@ -8,8 +8,10 @@ import string
 
 
 def create_bit_sequence_from_letters(t: tuple) -> np.ndarray:
-    '''Returns concatenated numpy array from input tuple.
-        ('01101000', '01100101') -> array([0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1])'''
+    '''
+        Returns concatenated numpy array from input tuple.
+        ('01101000', '01100101') -> array([0, 1, 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1])
+    '''
 
     result = np.array([])
 
@@ -31,8 +33,15 @@ def qpsk_modualte(bits):
     return qpsk.modulate(bits)
 
 
-def qpsk_demodulate(complex_data):
+def qpsk_demodulate(complex_data: np.ndarray) -> np.ndarray:
+    '''
+        Demodulates input complex vectors 'complex_data'.
+        Returns bits as numpy array.
+
+        [1+1j, 1-1j, -1+1j, ...]    ->  [0, 1, 0, 0, 1, ...]
+    '''
     qpsk = cp.modulation.QAMModem(4)
+
     return qpsk.demodulate(complex_data, 'hard')
 
 
@@ -44,20 +53,27 @@ def _zeros(size):
 
 
 class put_data_to_zeros:
+    '''
+
+    '''
 
     def __init__(self, N_fourier: int, Guard_size: int, mod_data: np.ndarray) -> None:
         self.N_fourier = N_fourier
         self.Guard_size = Guard_size
+
         self.zero_index = int(self.N_fourier/2)
-        self.N_complex_points = int((self.N_fourier/2 - self.Guard_size)*2)
-        self.mod_data = mod_data[:self.N_complex_points]
+        self.N_complex_vectors = int(self.N_fourier - self.Guard_size*2)
+
+        assert mod_data.size >= self.N_complex_vectors, 'not enough complex vectors to create OFDM symbol'
+
+        self.mod_data = mod_data[:self.N_complex_vectors]
 
     
     def get_spectrum(self):
         spec = _zeros(self.N_fourier)
         
         left_point = self.Guard_size
-        r = int(self.N_complex_points/2)
+        r = int(self.N_complex_vectors/2)
         spec[left_point:self.zero_index] = self.mod_data[:r]
         spec[self.zero_index+1:self.N_fourier - (self.Guard_size - 1)] = self.mod_data[r:]
 
@@ -79,7 +95,11 @@ def normalize_for_pluto(complex_time_data):
     return normalized_complex_time_data
 
 
-def get_preambula():
+def get_preambula() -> put_data_to_zeros:
+    '''
+        Returns instance of preambula 'pre'. 
+        The instance has methods to generate time dommain complex vectors
+    '''
     preambula_word = string.printable + string.ascii_letters + string.printable[::-1]
 
     # converts ascii letters to binary strings. 'he' -> ('01101000', '01100101')
@@ -87,6 +107,8 @@ def get_preambula():
     pream_bits = create_bit_sequence_from_letters(mapped)
     q = qpsk_modualte(pream_bits)
     pre = put_data_to_zeros(1024, 100, q)
+
+
     return pre
 
 
