@@ -32,13 +32,8 @@ def correlation(reference, received, shift):
         max_x += pream_length
     '''
 
-    
-    print(f"found corr max: {max_x}")
-
     left_cut_index = max_x - pream_length*2 + shift
     right_cut_index = left_cut_index + pream_length*7
-    print(f"left cut index: {left_cut_index}")
-    print(f"right cut index: {right_cut_index}")
 
 
     cutted = received[left_cut_index:right_cut_index]
