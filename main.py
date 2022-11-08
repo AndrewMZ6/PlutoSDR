@@ -42,11 +42,8 @@ preambula_spectrum = preambula.get_spectrum()
 preambula_time_domain = preambula.get_time_samples()
 preambula_time_domain = np.concatenate((preambula_time_domain, preambula_time_domain))
 preambula_length = len(preambula_time_domain)
-print(f"preambula length: {preambula_length}")
 
 
-fig12, ax12 = plt.subplots()
-ax12.plot(np.abs(np.correlate(preambula_time_domain[:1024], preambula_time_domain[1024:], 'full')))
 
 tx_signal = np.array([])
 
@@ -60,32 +57,16 @@ for _ in range(5):
         data_compare = data_bits
 
     # create spectrum and time samples
-    data_spectrum = mod.put_data_to_zeros(config.FOURIER_SIZE, config.GUARD_SIZE, data_modulated)
+    data_spectrum = mod.PutDataToZeros(config.FOURIER_SIZE, config.GUARD_SIZE, data_modulated)
     data_time_domain = data_spectrum.get_time_samples()
     tx_signal = np.append(tx_signal, data_time_domain)
 
 
 reference_data = tx_signal
 tx_signal = np.concatenate((preambula_time_domain, tx_signal))
-sig_len = len(tx_signal)
-print(f'transmitted signal length: {sig_len}')
 
 
-#assert (tx_signal[fftsize*2:] == data_time_domain).all(), 'txsignal is wrong!'
 assert (preambula_time_domain[:1024] == preambula_time_domain[1024:2048]).all(), 'preambulas part1 and 2 are different!'
-print(f"tx signal:{tx_signal[:5]}")
-
-spec = data_spectrum.get_spectrum()
-nums = utils.remove_spectrum_zeros(data_time_domain)
-# original signal graphs
-fig1, axs1 = plt.subplots(2, 2)
-axs1[0][0].plot(np.abs(spec), spectrum_color)
-axs1[0][0].set_title('generated sig')
-axs1[0][1].scatter(spec.real, spec.imag, color=scatter_color)
-axs1[0][1].set_title('constellation')
-axs1[1][0].plot(np.abs(nums))
-for i in axs1: i[0].grid(); i[1].grid()
-
 
 
 sdrtx = adi.Pluto(devices[transmitter])
@@ -115,11 +96,14 @@ sdrrx.rx_hardwaregain_chan0 = 0.0
 sdrtx.tx(tx_signal)
 
 
+fig, axes = plt.subplots(5, 2)
+
+
+    
 # receiving
 data_recieved = sdrrx.rx()
 recived_data_length = len(data_recieved)
-print(f"recieved data length = {recived_data_length}")
-print(f"received data: {data_recieved[1000:1010]}")
+
 
 # creating spectrum of recieved data
 spectrum_data_recived = np.fft.fftshift(np.fft.fft(data_recieved))
@@ -129,18 +113,11 @@ spectrum_data_recived = np.fft.fftshift(np.fft.fft(data_recieved))
 cutted, abs_first_correlation = dp.correlation(preambula_time_domain, data_recieved, 0)
 
 # received spec, constellation and correlation graphs
-fig2, axs = plt.subplots(2, 2)
-axs[0][0].plot(np.abs(spectrum_data_recived), spectrum_color)
-axs[0][0].set_title('received sig spec')
-axs[0][1].scatter(spectrum_data_recived.real, spectrum_data_recived.imag, color=scatter_color, marker='.')
-axs[0][1].set_title('received constellation')
-axs[1][0].plot(abs_first_correlation, correlation_color)
-#axs[1][0].annotate(f'max={x_coord_max_first_correlation:.1f}', xy=(x_coord_max_first_correlation, m), xytext=(maxcorr + 1, m + 1000000), arrowprops=dict(facecolor='black', shrink=0.05))
-axs[1][0].set_title('correlation')
-for i in axs: i[0].grid(); i[1].grid()
+axes[0][0].plot(np.abs(spectrum_data_recived), spectrum_color)
+axes[0][0].set_title('received sig spec')
 
-
-
+axes[1][0].plot(abs_first_correlation, correlation_color)
+axes[1][0].set_title('correlation')
 
 
 # cutting off
@@ -148,88 +125,32 @@ cut_data = cutted
 cut_data_spec = spectrum_and_shift(cut_data)
 
 
-fig7, ax7 = plt.subplots()
-ax7.plot(np.abs(np.correlate(cut_data, tx_signal, 'full')))
-ax7.set_title('cut data and tx_signal correlation')
-
-print(f"data cutted len: {len(cut_data_spec)}")
-
-
-# cut data graphs
-fig3, axs = plt.subplots(2, 2)
-axs[0][1].plot(np.abs(cut_data_spec), spectrum_color)
-axs[0][1].set_title('absolute cut_data_spec')
-axs[1][0].scatter(cut_data_spec.real, cut_data_spec.imag, color=scatter_color, marker='.')
-axs[1][0].set_title('cut constellation')
-for i in axs: i[0].grid(); i[1].grid()
-
-
-
 # correlating part1 and part2 of cutted data
 part1, part2, data = cut_data[:1024], cut_data[1024:2048], cut_data[2048:]
-print(f"cut data length: {len(data)}")
-
-conc = np.concatenate((part1, part2))
-print(f"pre: {len(preambula_time_domain)} conc: {len(conc)}")
-fig11, ax11 = plt.subplots()
-corr3 = np.correlate(preambula_time_domain, np.concatenate((part1, part2)), 'full')
-ax11.plot(np.abs(corr3))
-
-
-# part1 and data graphs
-fig8, ax8 = plt.subplots(2, 2)
-ax8[0][0].plot(np.abs(spectrum_and_shift(part1)), spectrum_color)
-ax8[0][0].set_title('part1')
-ax8[0][1].scatter(spectrum_and_shift(part1).real, spectrum_and_shift(part1).imag, color=scatter_color, marker='.')
-ax8[0][1].set_title('part1 constellation')
-ax8[1][0].plot(np.abs(spectrum_and_shift(data)), spectrum_color)
-ax8[1][0].set_title('data')
-ax8[1][1].scatter(spectrum_and_shift(data).real, spectrum_and_shift(data).imag, color=scatter_color, marker='.')
-ax8[1][1].set_title('data constellation')
-for i in ax8: i[0].grid(); i[1].grid()
 
 
 corr2 = np.correlate(part2, part1, 'full')
 
 abscorr2 = np.abs(corr2)
 maxx = abscorr2.argmax()
-
 complex_max = corr2[maxx]
 
 
-fig4, ax4 = plt.subplots(2, 2)
-ax4[0][0].plot(np.abs(corr2), correlation_color)
-ax4[0][0].set_title('part1 part2 correlation')
+first_OFDM_symbol = spectrum_and_shift(data[:1024])
+axes[3][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
+axes[3][0].set_title('first_OFDM_symbol before freq ')
 
-part1_spce = spectrum_and_shift(part1)
-ax4[1][1].scatter(part1_spce.real, part1_spce.imag, color=scatter_color, marker='.')
-ax4[1][1].set_title('part1 before freq ')
-
-
-import math
-print(f"complex max = {complex_max}")
-# variant 1
-ang = math.atan2(complex_max.imag, complex_max.real)
-ang2 = np.arctan2(complex_max.imag, complex_max.real)
-#print(f"angle math: {ang}, angle numpy: {ang2}")
-
-''''
-COR_RE = 0
-COR_IM = 0
-for i in range(len(part2)):
-    COR_RE += part1.real[i]*part2.real[i]+part1.imag[i]*part2.imag[i]
-    COR_IM += part1.imag[i]*part2.real[i]-part1.real[i]*part2.imag[i]
-
-
-angle = math.atan2(COR_IM,COR_RE)
 '''
-#print(angle, ang, ang2)
-#data2 = np.ndarray((1024,),float)
-data2=[0]*len(data)
+# variant 1
+ang2 = np.arctan2(complex_max.imag, complex_max.real)
+
 for i in range(len(data)):
-    data2[i] = data[i]*np.exp(-1j*i*(0/fftsize))
+    data[i] = data[i]*np.exp(1j*i*(ang2/fftsize))
+'''
 
-
+first_OFDM_symbol = spectrum_and_shift(data[:1024])
+axes[4][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
+axes[4][0].set_title('first_OFDM_symbol after freq ')
 
 
 '''
@@ -248,7 +169,11 @@ for i in range(len(data)):
 
 
 eq = utils.equalize(preambula_time_domain[1024:2048], part2)
-data_eq = utils.remove_spectrum_zeros(data2)
+data_eq = utils.remove_spectrum_zeros(data)
+
+axes[2][0].scatter(eq.real, eq.imag, color=scatter_color, marker='.')
+axes[2][0].set_title('equalizer')
+
 
 s = []
 for spectrum in data_eq:
@@ -257,41 +182,18 @@ for spectrum in data_eq:
     m = np.max(q_abs)
     q_normilized = (q/m)*1.4142
     s.append(q_normilized)
-#np.save(r"/media/andrew/PlutoSDR/eq.npy", eq)
-#eq = np.load(r"/media/andrew/PlutoSDR/eq.npy")
-#eqed = part1/eq
-#eqedspec = np.fft.fftshift(np.fft.fft(eqed))
-
 
 
 data_eq_spectrum_shifted = data_eq
-ax4[0][1].plot(np.abs(s[0]), spectrum_color)
-ax4[0][1].set_title('data_eq_spectrum_shifted')
-ax4[1][0].scatter(s[0].real, s[0].imag, color=scatter_color,marker='.')
-ax4[1][0].set_title('data_eq_spectrum_shifted constellation')
-for i in ax4: i[0].grid(); i[1].grid()
 
-fig9, ax9 = plt.subplots(1, 2)
-ax9[0].plot(np.abs(data_eq))
-ax9[1].plot(np.abs(spectrum_and_shift(data2)))
-
-
-fig10, ax10 = plt.subplots(5, 2)
 for i in range(5):
-    for j in range(2):
-        if j == 0:
-            ax10[i][j].plot(np.abs(s[i]), spectrum_color)
-            ax10[i][j].set_title(f's[{i}]')
-        else:
-            ax10[i][j].scatter(s[i].real, s[i].imag, color=scatter_color,marker='.')
-            ax10[i][j].set_title(f's[{i}]')
-        ax10[i][j].grid()
-
+        axes[i][1].scatter(s[i].real, s[i].imag, color=scatter_color,marker='.')
+        axes[i][1].set_title(f's[{i}]')
+        axes[i][1].grid()
+        axes[i][0].grid()
 
 demod_data = mod.qpsk_demodulate(s[0])
-print(f"demod_data len = {len(demod_data)}")
-print(demod_data[:10])
-print(data_compare[:10])
+
 
 plt.show()
 sdrtx.tx_destroy_buffer()
