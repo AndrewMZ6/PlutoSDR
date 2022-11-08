@@ -24,7 +24,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # swap transmitter and receiver
-#transmitter, receiver = receiver, transmitter
+transmitter, receiver = receiver, transmitter
 
 
 # find connected devices
@@ -95,12 +95,13 @@ sdrrx.rx_hardwaregain_chan0 = 0.0
 # transmission
 sdrtx.tx(tx_signal)
 
-plt.ion()
+
 fig, axes = plt.subplots(5, 2)
 
-for ne in range(10):
+for ne in range(1000):
 
-    axes[0][1].clf()
+    for ax in axes:
+        ax[0].cla(); ax[1].cla()
     # receiving
     data_recieved = sdrrx.rx()
     recived_data_length = len(data_recieved)
@@ -141,6 +142,13 @@ for ne in range(10):
     axes[3][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
     axes[3][0].set_title('first_OFDM_symbol before freq ')
 
+    
+
+    first_OFDM_symbol = spectrum_and_shift(data[:1024])
+    axes[4][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
+    axes[4][0].set_title('first_OFDM_symbol after freq ')
+
+
     '''
     # variant 1
     ang2 = np.arctan2(complex_max.imag, complex_max.real)
@@ -148,10 +156,6 @@ for ne in range(10):
     for i in range(len(data)):
         data[i] = data[i]*np.exp(1j*i*(ang2/fftsize))
     '''
-
-    first_OFDM_symbol = spectrum_and_shift(data[:1024])
-    axes[4][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
-    axes[4][0].set_title('first_OFDM_symbol after freq ')
 
 
     '''
@@ -195,122 +199,11 @@ for ne in range(10):
 
     demod_data = mod.qpsk_demodulate(s[0])
     sdrrx.rx_destroy_buffer()
-    axes.draw()
-    axes.canvas.flush_events()
 
-    sleep(0.5)
+    plt.pause(0.5)
 
 
-plt.ioff()
+
 plt.show()
 sdrtx.tx_destroy_buffer()
-
-exit()
-
-fig6, ax = plt.subplots()
-ax.scatter(eqedspec.real, eqedspec.imag, color=scatter_color,marker='.')
-ax.set_title('eqed')
-
-
-
-eq = []
-axs[0][0].scatter(d.real, d.imag)
-axs[0][0].set_title('d.real, d.imag')
-d = d**2
-
-axs[1][0].scatter(cut_data_spec.real, cut_data_spec.imag)
-axs[1][0].set_title('cut data spec real amd imag')
-
-axs[1][1].plot(np.absolute(cut_data_spec))
-axs[1][1].set_title('absolute cut data spec')
-
-
-
-plt.show()
-
-'''
-for j in range(4):
-    
-    
-    for i in range(10):
-        #
-        data = sdr2.rx()
-       
-        #print(f"data size: {len(data)}")
-
-        
-        axs[0][0].cla()
-        
-        axs[0][1].cla()
-        axs[1][0].cla()
-        axs[1][1].cla()
-
-        
-        cor = np.correlate(data, time_sig, 'full')
-        #print(f"cor len: {len(cor)}")
-        x1 = cor.argmax(axis=0)
-        
-        #print(f"max index: {x1}")
-        if x1 <= 944:
-            #print("if works here")
-            left_ind = x1 - int(rr/2) +1 
-            right_ind = left_ind + rr 
-            #print(f"cutting left index: {left_ind}")
-            #print(f"cutting right index: {right_ind}")
-        else:
-            #print("else works here")
-            left_ind = x1 - int(rr/2) - rr +1 
-            right_ind = left_ind + rr 
-            #print(f"cutting left index: {left_ind}")
-            #print(f"cutting right index: {right_ind}")
-
-        cut_data = data[left_ind:right_ind]
-        cut_data_spec = np.fft.fft(cut_data)
-        cut_data_spec = np.fft.fftshift(cut_data_spec)
-        zero_index = int(config.FOURIER_SIZE/2)
-        cut_spec = cut_data_spec[config.GUARD_SIZE:zero_index]
-        cut_spec = np.append(cut_spec,cut_data_spec[zero_index + 1:-config.GUARD_SIZE + 1])
-        print(len(cut_spec))
-        #
-        #ar = np.append(ar, cut_data)
-        #print(f"cut len: {len(cut_data)}", end='\n---------------------------\n')
-        
-        #d1 = np.fft.fft(cut_data)
-        #d1_shifted = np.fft.fftshift(d1)
-        #dd = np.fft.fftshift(np.fft.fft(cut_data))
-
-        if not len(eq):
-            eq = mod_data/cut_spec
-
-        axs[0][0].set_title('Spectrum')
-        
-        axs[0][1].set_title('Constelation')
-        axs[1][0].set_title('corr')
-        axs[1][1].set_title('shifted')
-        
-        #axs[0][0].plot(np.absolute(d1))
-        recov = cut_spec*eq
-        axs[0][0].scatter(recov.real, recov.imag)
-        axs[0][1].scatter(eq.real, eq.imag)
-        axs[1][0].plot(np.absolute(cor))
-        axs[1][1].plot(np.absolute(cut_spec*eq))
-        rec_bits = mod.qpsk_demodulate(recov)
-        print(rec_bits[:10])
-        print(bits[:10])
-        #print(data[:5])
-        #input()
-        plt.grid()
-        plt.pause(1)
-    print("Next iteration")
-    sdr2.rx_destroy_buffer()
-    sdr.tx_destroy_buffer()
-    
-
-stop = perf_counter()
-#plt.show()
-print(ar)
-print(len(ar))
-print(f'time: {stop-start}')
-print(f'speed: {((config.BIT_SIZE/8)*iter_num)/(stop-start)} kBps')
-'''
 
