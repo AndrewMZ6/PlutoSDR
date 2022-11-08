@@ -100,10 +100,14 @@ sdrtx.tx(tx_signal)
 
 fig, axes = plt.subplots(5, 2)
 
-plot_spec_received = axes[0][0].plot([], [], spectrum_color)
+plot_spec_received, = axes[0][0].plot(np.arange(config.COMPLEX_SAMPLES_NUMBER), np.zeros(config.COMPLEX_SAMPLES_NUMBER), spectrum_color)
 axes[0][0].set_title('received sig spec')
-plot_first_correlation = axes[1][0].plot([], [], correlation_color, correlation_color)
+axes[0][0].set_ylim(-10, 1500)
+
+plot_first_correlation,  = axes[1][0].plot(np.arange(17407), np.zeros(17407), correlation_color)
 axes[1][0].set_title('correlation')
+axes[1][0].set_ylim(-10, 1e8)
+
 before_freq_correction = axes[3][0].scatter([], [], color=scatter_color, marker='.')
 axes[3][0].set_title('first_OFDM_symbol before freq ')
 after_freq_correction = axes[4][0].scatter([], [], color=scatter_color, marker='.')
@@ -111,7 +115,8 @@ axes[4][0].set_title('first_OFDM_symbol after freq ')
 equalizer_scatter = axes[2][0].scatter([], [], color=scatter_color, marker='.')
 axes[2][0].set_title('equalizer')
 symbols_constells = [axes[i][1].scatter([], [], color=scatter_color, marker='.') for i in range(5)]
-    
+
+
 # receiving
 data_recieved = sdrrx.rx()
 recived_data_length = len(data_recieved)
@@ -160,8 +165,6 @@ for i in range(len(data)):
 '''
 
 
-
-
 '''
 # variant2
 dphi = np.angle(complex_max)
@@ -186,7 +189,7 @@ data_eq = utils.remove_spectrum_zeros(data)
 
 
 data3 = np.array([eq.real, eq.imag])
-equalizer_scatter.set_offset(data3.T)
+equalizer_scatter.set_offsets(data3.T)
 
 
 s = []
@@ -201,7 +204,8 @@ for spectrum in data_eq:
 data_eq_spectrum_shifted = data_eq
 
 for i in range(5):
-        symbols_constells[i].scatter(np.array(s[i].real, s[i].imag).T)
+    data = np.array([s[i].real, s[i].imag])
+    symbols_constells[i].set_offsets(data.T)
         
 
 demod_data = mod.qpsk_demodulate(s[0])
