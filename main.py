@@ -24,7 +24,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # swap transmitter and receiver
-transmitter, receiver = receiver, transmitter
+#transmitter, receiver = receiver, transmitter
 
 
 # find connected devices
@@ -102,18 +102,25 @@ fig, axes = plt.subplots(5, 2)
 
 plot_spec_received, = axes[0][0].plot(np.arange(config.COMPLEX_SAMPLES_NUMBER), np.zeros(config.COMPLEX_SAMPLES_NUMBER), spectrum_color)
 axes[0][0].set_title('received sig spec')
-axes[0][0].set_ylim(-10, 1500)
+axes[0][0].set_ylim(-10, 2e6)
 
 plot_first_correlation,  = axes[1][0].plot(np.arange(17407), np.zeros(17407), correlation_color)
 axes[1][0].set_title('correlation')
-axes[1][0].set_ylim(-10, 1e8)
+axes[1][0].set_ylim(0, 9e8)
 
-before_freq_correction = axes[3][0].scatter([], [], color=scatter_color, marker='.')
+z = np.zeros(1024)
+before_freq_correction = axes[3][0].scatter(z.real, z.imag, color=scatter_color, marker='.')
 axes[3][0].set_title('first_OFDM_symbol before freq ')
+axes[3][0].set_xlim(-2, 2); axes[3][0].set_ylim(-2, 2)
+
 after_freq_correction = axes[4][0].scatter([], [], color=scatter_color, marker='.')
 axes[4][0].set_title('first_OFDM_symbol after freq ')
+axes[4][0].set_xlim(-2, 2); axes[4][0].set_ylim(-2, 2)
+
 equalizer_scatter = axes[2][0].scatter([], [], color=scatter_color, marker='.')
 axes[2][0].set_title('equalizer')
+axes[2][0].set_xlim(-2, 2); axes[2][0].set_ylim(-2, 2)
+
 symbols_constells = [axes[i][1].scatter([], [], color=scatter_color, marker='.') for i in range(5)]
 
 
