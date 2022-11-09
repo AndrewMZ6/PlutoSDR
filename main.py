@@ -1,7 +1,7 @@
 
 import adi
 import numpy as np
-from time import sleep
+from time import sleep, time
 from matplotlib import pyplot as plt
 import mod
 import config
@@ -80,7 +80,7 @@ else:
 sdrtx.sample_rate = int(config.SAMPLE_RATE)
 sdrtx.tx_rf_bandwidth = int(config.SAMPLE_RATE)
 sdrtx.tx_lo = int(config.CENTRAL_FREQUENCY)
-sdrtx.tx_hardwaregain_chan0 = 0
+sdrtx.tx_hardwaregain_chan0 =0
 sdrtx.tx_cyclic_buffer = True
 
 
@@ -89,121 +89,96 @@ sdrrx.rx_lo = int(config.CENTRAL_FREQUENCY)
 sdrrx.rx_rf_bandwidth = int(config.SAMPLE_RATE)
 sdrrx.rx_buffer_size = config.COMPLEX_SAMPLES_NUMBER
 sdrrx.gain_control_mode_chan0 = 'manual'
-sdrrx.rx_hardwaregain_chan0 = 0.0
+sdrrx.rx_hardwaregain_chan0 = 0
 
 
 # transmission
 sdrtx.tx(tx_signal)
 
 
-fig, axes = plt.subplots(5, 2)
 
-for ne in range(1000):
+data_recieved = sdrrx.rx()
 
-    for ax in axes:
-        ax[0].cla(); ax[1].cla()
-    # receiving
-    data_recieved = sdrrx.rx()
-    recived_data_length = len(data_recieved)
+start = time()
+recived_data_length = len(data_recieved)
 
 
-    # creating spectrum of recieved data
-    spectrum_data_recived = np.fft.fftshift(np.fft.fft(data_recieved))
+# creating spectrum of recieved data
+spectrum_data_recived = np.fft.fftshift(np.fft.fft(data_recieved))
 
 
-    # first correlation 
-    cutted, abs_first_correlation = dp.correlation(preambula_time_domain, data_recieved, 0)
-
-    # received spec, constellation and correlation graphs
-    axes[0][0].plot(np.abs(spectrum_data_recived), spectrum_color)
-    axes[0][0].set_title('received sig spec')
-
-    axes[1][0].plot(abs_first_correlation, correlation_color)
-    axes[1][0].set_title('correlation')
-
-
-    # cutting off
-    cut_data = cutted
-    cut_data_spec = spectrum_and_shift(cut_data)
-
-
-    # correlating part1 and part2 of cutted data
-    part1, part2, data = cut_data[:1024], cut_data[1024:2048], cut_data[2048:]
-
-
-    corr2 = np.correlate(part2, part1, 'full')
-
-    abscorr2 = np.abs(corr2)
-    maxx = abscorr2.argmax()
-    complex_max = corr2[maxx]
-
-
-    first_OFDM_symbol = spectrum_and_shift(data[:1024])
-    axes[3][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
-    axes[3][0].set_title('first_OFDM_symbol before freq ')
-
-    
-
-    first_OFDM_symbol = spectrum_and_shift(data[:1024])
-    axes[4][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
-    axes[4][0].set_title('first_OFDM_symbol after freq ')
-
-
-    '''
-    # variant 1
-    ang2 = np.arctan2(complex_max.imag, complex_max.real)
-
-    for i in range(len(data)):
-        data[i] = data[i]*np.exp(1j*i*(ang2/fftsize))
-    '''
-
-
-    '''
-    # variant2
-    dphi = np.angle(complex_max)
-    dt = 1/fs
-    tau = config.FOURIER_SIZE*dt
-    ocen_freq = dphi/(2*np.pi*tau)
-    dphi_ocen = (ocen_freq*2*np.pi)/fs  
-
-
-    for i in range(len(data)):
-        data[i] = data[i]*np.exp(1j*i*(-dphi_ocen))
-    '''
+# first correlation 
+cutted, abs_first_correlation = dp.correlation(preambula_time_domain, data_recieved, 0)
 
 
 
-    eq = utils.equalize(preambula_time_domain[1024:2048], part2)
-    data_eq = utils.remove_spectrum_zeros(data)
-
-    axes[2][0].scatter(eq.real, eq.imag, color=scatter_color, marker='.')
-    axes[2][0].set_title('equalizer')
+# cutting off
+cut_data = cutted
+cut_data_spec = spectrum_and_shift(cut_data)
 
 
-    s = []
-    for spectrum in data_eq:
-        q = spectrum*eq
-        q_abs = np.abs(q)
-        m = np.max(q_abs)
-        q_normilized = (q/m)*1.4142
-        s.append(q_normilized)
+# correlating part1 and part2 of cutted data
+part1, part2, data = cut_data[:1024], cut_data[1024:2048], cut_data[2048:]
 
 
-    data_eq_spectrum_shifted = data_eq
+corr2 = np.correlate(part2, part1, 'full')
 
-    for i in range(5):
-            axes[i][1].scatter(s[i].real, s[i].imag, color=scatter_color,marker='.')
-            axes[i][1].set_title(f's[{i}]')
-            axes[i][1].grid()
-            axes[i][0].grid()
+abscorr2 = np.abs(corr2)
+maxx = abscorr2.argmax()
+complex_max = corr2[maxx]
 
-    demod_data = mod.qpsk_demodulate(s[0])
-    sdrrx.rx_destroy_buffer()
 
-    plt.pause(0.5)
+first_OFDM_symbol = spectrum_and_shift(data[:1024])
 
 
 
-plt.show()
+
+'''
+# variant 1
+ang2 = np.arctan2(complex_max.imag, complex_max.real)
+
+for i in range(len(data)):
+    data[i] = data[i]*np.exp(1j*i*(ang2/fftsize))
+'''
+
+
+'''
+# variant2
+dphi = np.angle(complex_max)
+dt = 1/fs
+tau = config.FOURIER_SIZE*dt
+ocen_freq = dphi/(2*np.pi*tau)
+dphi_ocen = (ocen_freq*2*np.pi)/fs  
+
+
+for i in range(len(data)):
+    data[i] = data[i]*np.exp(1j*i*(-dphi_ocen))
+'''
+
+
+
+eq = utils.equalize(preambula_time_domain[1024:2048], part2)
+data_eq = utils.remove_spectrum_zeros(data)
+
+
+s = []
+for spectrum in data_eq:
+    q = spectrum*eq
+    q_abs = np.abs(q)
+    m = np.max(q_abs)
+    q_normilized = (q/m)*1.4142
+    s.append(q_normilized)
+
+
+data_eq_spectrum_shifted = data_eq
+
+
+
+demod_data = mod.qpsk_demodulate(s[0])
+
+end = time()
+sdrrx.rx_destroy_buffer()
+
+
 sdrtx.tx_destroy_buffer()
-
+print(end-start)
