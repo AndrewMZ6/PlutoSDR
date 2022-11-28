@@ -15,8 +15,7 @@ mode        = 'single1'
 #transmitter = 'BEARD'
 transmitter = 'ANGRY'
 receiver    = 'FISHER'
-fs          = config.SAMPLE_RATE
-fftsize     = config.FOURIER_SIZE
+
 scatter_color       = '#006699'
 spectrum_color      = '#b35900'
 correlation_color   = '#26734d'

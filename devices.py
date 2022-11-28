@@ -5,13 +5,13 @@ from devexceptions import NoDeviceFoundException
 import adi
 
 """
-    The module provides function for establishing connection
+    The module provides functions for establishing connection
     to plugged plutos and initializing them
 """
 
 
-def detect_devices() -> dict | None:
-    '''Detects plutos and return dictinary of devices'''
+def _detect_devices() -> dict | None:
+    '''Detects plutos and returns dictinary {serial_number:usb_number} of devices found'''
 
     x = os.popen('iio_info -s').read()
     s = re.findall(r"serial=(\w+)\s*\[(usb:.*)\]", x)
@@ -33,13 +33,33 @@ def detect_devices() -> dict | None:
     return devices
 
 
+def _configure_devices(sdrtx, sdrrx) -> tuple:
+    '''Set transmitter and receiver attributes and return them configured'''
+
+    # configure transmitter
+    sdrtx.sample_rate = int(config.SAMPLE_RATE)
+    sdrtx.tx_rf_bandwidth = int(config.SAMPLE_RATE)
+    sdrtx.tx_lo = int(config.CENTRAL_FREQUENCY)
+    sdrtx.tx_hardwaregain_chan0 = config.TX_HARDWARE_GAIN_CHAN_0
+    sdrtx.tx_cyclic_buffer = config.TX_USE_CYCLIC_BUFFER
+
+    # configure receiver
+    sdrrx.rx_lo = int(config.CENTRAL_FREQUENCY)
+    sdrrx.rx_rf_bandwidth = int(config.SAMPLE_RATE)
+    sdrrx.rx_buffer_size = config.COMPLEX_SAMPLES_NUMBER
+    sdrrx.gain_control_mode_chan0 = config.RX_GAIN_CONTROL_MODE_CHAN_0
+    sdrrx.rx_hardwaregain_chan0 = config.RX_HARDWARE_GAIN_CHAN_0
+
+    return sdrtx, sdrrx
+
+
 def initialize_sdr(single_mode=False, tx='ANGRY', swap=False) -> tuple:
     '''
        Initialize detected devices and return
        configuration depending on the input arguments
     '''
 
-    devices = detect_devices()
+    devices = _detect_devices()
     if devices is None:
         raise NoDeviceFoundException('No connected devices found')
     
@@ -57,6 +77,12 @@ def initialize_sdr(single_mode=False, tx='ANGRY', swap=False) -> tuple:
         for key in devices.keys():
             if key != tx:
                 sdrrx = adi.Pluto(devices[key])
+
+
+    _configure_devices(sdrtx, sdrrx)
+
+    if swap:
+        return sdrrx, sdrtx
 
     return sdrtx, sdrrx
 

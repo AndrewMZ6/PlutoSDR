@@ -1,11 +1,12 @@
 import devices
+import data_gen
 
 # if mode='single' then sdrrx=sdrtx, otherwise sdrrx = 'NOBEARD'
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=[5], tx='FISHER', swap=False)
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='FISHER', swap=False)
 
 
-# get user bits and time domain data
-transmitted_user_bits, tx_data = generate_tx_data(params)
+# get user bits and time domain data, or generate data for DPD calcualtion
+transmitted_user_bits, tx_data = data_gen.generate_tx_data(frames=5)
 
 
 sdrtx.tx(tx_data)
@@ -16,9 +17,9 @@ sdrtx.tx(tx_data)
 #    |
 #    |
 #    v
-receivced_data = sdrrx.rx()
+receivced_data = sdrrx.rx(0)
 
-
+exit()
 # demodualted user data
 received_user_bits = process_data(receivced_data, show_graphs=False)
 
