@@ -1,5 +1,6 @@
 import devices
 import data_gen
+import data_processing
 
 # if mode='single' then sdrrx=sdrtx, otherwise sdrrx = 'NOBEARD'
 sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='FISHER', swap=False)
@@ -19,10 +20,10 @@ sdrtx.tx(tx_data)
 #    v
 receivced_data = sdrrx.rx(0)
 
-exit()
+
 # demodualted user data
-received_user_bits = process_data(receivced_data, show_graphs=False)
+received_user_bits = data_processing.process_data(receivced_data, show_graphs=False)
 
-
+exit()
 # compare transmitted bits and demodulated bits
-show_bit_errors(received_user_bits, transmitted_user_bits)
+data_processing.show_bit_errors(received_user_bits, transmitted_user_bits)
