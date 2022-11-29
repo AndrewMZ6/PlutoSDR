@@ -21,7 +21,7 @@ sdrtx.tx(tx_data)
 receivced_data = sdrrx.rx(0)
 
 
-# demodualted user data
+# demodualted user data1
 received_user_bits = data_processing.process_data(receivced_data, show_graphs=False)
 
 exit()
