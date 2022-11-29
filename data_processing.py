@@ -1,6 +1,7 @@
 import numpy as np
 import data_gen
 import utils
+import config
 
 
 def process_data(receivced_data, show_graphs=False):
@@ -68,3 +69,46 @@ def correlation(reference:np.ndarray, received:np.ndarray, shift:int) -> tuple:
 
     return cutted, abs_corr
 
+
+def get_pilot_and_data_indexes(fftsize=None, guard_size=None, pilot_step:int=10) -> tuple:
+    if fftsize is None:
+        fftsize = config.FOURIER_SIZE
+
+    if guard_size is None:
+        guard_size = config.GUARD_SIZE
+
+    points_available = fftsize - 2*guard_size
+    pilot_indexes = np.array(range(0, points_available, pilot_step))
+    data_indexes = np.array([i for i in range(points_available) if not i%pilot_step==0])
+
+    return pilot_indexes, data_indexes
+
+
+def put_data_to_indexes(pilot_indexes:np.ndarray,
+                        data_indexes:np.ndarray,
+                        pilots:np.ndarray,
+                        data:np.ndarray):
+
+    z = np.zeros(pilot_indexes.size + data_indexes.size)
+    z[pilot_indexes] = pilots
+    z[data_indexes] = data
+
+    return z
+
+
+
+if __name__ == '__main__':
+    p, d = get_pilot_and_data_indexes()
+    print(f"pilot_indexes:\n{p}\ndata_indexes:\n{d}")
+    print(f"length p = {len(p)}. length d = {len(d)}")
+
+    pilots = np.ones(83)
+    data = np.ones(741)*0.4
+
+    z = put_data_to_indexes(p, d, pilots, data)
+    print(z)
+    print(len(z[:412]))
+
+    g = z[d]
+    print(g)
+    print(len(g))
