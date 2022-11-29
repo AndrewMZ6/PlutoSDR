@@ -30,7 +30,7 @@ def process_data(receivced_data, show_graphs=False):
 
 
 
-def correlation(reference, received, shift):
+def correlation(reference:np.ndarray, received:np.ndarray, shift:int) -> tuple:
     '''
         Input values are time domain numpy arrays.
 
