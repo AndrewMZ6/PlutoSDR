@@ -2,6 +2,7 @@ import devices
 import numpy as np
 import mod
 import data_gen
+from matplotlib import pyplot as plt
 
 sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='ANGRY', swap=False)
 
@@ -23,3 +24,6 @@ print(len(receivced_data))
 
 sdrtx.tx_destroy_buffer()
 sdrrx.rx_destroy_buffer()
+
+plt.plot(np.abs(np.fft.fft(receivced_data)))
+plt.show()
