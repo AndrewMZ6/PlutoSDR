@@ -28,7 +28,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 # swap transmitter and receiver
 #transmitter, receiver = receiver, transmitter
 
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='FISHER', swap=False)
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='ANGRY', swap=False)
 
 
 # create and modulate random bits
@@ -74,51 +74,46 @@ sdrtx.tx(tx_signal)
 
 mm = np.array([2+2j, 2-2j, -2+2j, -2-2j])
 fig, axes = plt.subplots()
+axes.grid()
 scat = axes.scatter(mm.real, mm.imag)
 
 
-
+c = 0
 def func(frames, scat):
-    data_recieved = sdrrx.rx()
+    global c
+    try:
+        data_recieved = sdrrx.rx()
 
 
-    # creating spectrum of recieved data
-    spectrum_data_recived = np.fft.fftshift(np.fft.fft(data_recieved))
+        # first correlation 
+        cutted, abs_first_correlation = dp.correlation(preambula_time_domain, data_recieved, 0)
 
 
-    # first correlation 
-    cutted, abs_first_correlation = dp.correlation(preambula_time_domain, data_recieved, 0)
+        # cutting off
+        cut_data = cutted
 
 
-    # cutting off
-    cut_data = cutted
-    cut_data_spec = spectrum_and_shift(cut_data)
+        # correlating part1 and part2 of cutted data
+        part1, part2, data = cut_data[:1024], cut_data[1024:2048], cut_data[2048:]
 
 
-    # correlating part1 and part2 of cutted data
-    part1, part2, data = cut_data[:1024], cut_data[1024:2048], cut_data[2048:]
+        eq = utils.equalize(preambula_time_domain[1024:2048], part2)
+        data_eq = utils.remove_spectrum_zeros(data)
 
 
-    corr2 = np.correlate(part2, part1, 'full')
+        q = data_eq[0]*eq
+        q_abs = np.abs(q)
+        m = np.max(q_abs)
+        q_normilized = (q/m)*1.4142
 
-    abscorr2 = np.abs(corr2)
-    maxx = abscorr2.argmax()
+    
 
+        data = np.array([q_normilized.real, q_normilized.imag])
+        scat.set_offsets(data.T)
 
-    first_OFDM_symbol = spectrum_and_shift(data[:1024])
-
-    eq = utils.equalize(preambula_time_domain[1024:2048], part2)
-    data_eq = utils.remove_spectrum_zeros(data)
-
-
-    q = data_eq[0]*eq
-    q_abs = np.abs(q)
-    m = np.max(q_abs)
-    q_normilized = (q/m)*1.4142
-
-
-    data = np.array([q_normilized.real, q_normilized.imag])
-    scat.set_offsets(data.T)
+    except ValueError:
+        c += 1
+        print(f'-> ValueError exception happened: {c}')
 
     return scat, 
 
@@ -127,7 +122,7 @@ def func(frames, scat):
 animation = FuncAnimation(fig,
                             func=func,
                             fargs=(scat, ),
-                            interval=10,
+                            interval=1,
                             blit=True,
                             repeat=True)
 

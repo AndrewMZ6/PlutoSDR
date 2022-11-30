@@ -79,10 +79,12 @@ def initialize_sdr(single_mode=False, tx='ANGRY', swap=False) -> tuple:
                 sdrrx = adi.Pluto(devices[key])
 
 
-    _configure_devices(sdrtx, sdrrx)
+    
 
     if swap:
-        return sdrrx, sdrtx
+        sdrrx, sdrtx = sdrtx, sdrrx
+    
+    _configure_devices(sdrtx, sdrrx)
 
     return sdrtx, sdrrx
 
