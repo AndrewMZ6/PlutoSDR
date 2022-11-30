@@ -5,7 +5,7 @@ import config
 
 
 def process_data(receivced_data, show_graphs=False):
-
+    '''The main function for processing received data from receiver'''
 
     spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
     # creating spectrum of recieved data
