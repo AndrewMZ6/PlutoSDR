@@ -18,7 +18,7 @@ sdrtx.tx(tx_data)
 #    |
 #    |
 #    v
-receivced_data = sdrrx.rx(0)
+receivced_data = sdrrx.rx()
 
 
 # demodualted user data1
