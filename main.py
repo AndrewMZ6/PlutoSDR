@@ -8,6 +8,7 @@ import config
 import utils
 from devexceptions import NoDeviceFoundException
 import dprocessing as dp
+import devices
 
 
 # initializing constants
@@ -26,11 +27,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 # swap transmitter and receiver
 #transmitter, receiver = receiver, transmitter
 
-
-# find connected devices
-devices = utils.detect_devices()
-if devices is None:
-    raise NoDeviceFoundException('No connected devices found')
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='ANGRY')
 
 
 # create and modulate random bits
@@ -69,27 +66,6 @@ tx_signal = np.concatenate((preambula_time_domain, tx_signal))
 assert (preambula_time_domain[:1024] == preambula_time_domain[1024:2048]).all(), 'preambulas part1 and 2 are different!'
 
 
-sdrtx = adi.Pluto(devices[transmitter])
-if mode != 'single':
-    sdrrx = adi.Pluto(devices[receiver])
-else:
-    sdrrx = sdrtx
-
-
-# setting up tx
-sdrtx.sample_rate = int(config.SAMPLE_RATE)
-sdrtx.tx_rf_bandwidth = int(config.SAMPLE_RATE)
-sdrtx.tx_lo = int(config.CENTRAL_FREQUENCY)
-sdrtx.tx_hardwaregain_chan0 = 0
-sdrtx.tx_cyclic_buffer = True
-
-
-# setting up rx
-sdrrx.rx_lo = int(config.CENTRAL_FREQUENCY)
-sdrrx.rx_rf_bandwidth = int(config.SAMPLE_RATE)
-sdrrx.rx_buffer_size = config.COMPLEX_SAMPLES_NUMBER
-sdrrx.gain_control_mode_chan0 = 'manual'
-sdrrx.rx_hardwaregain_chan0 = 0.0
 
 
 # transmission
