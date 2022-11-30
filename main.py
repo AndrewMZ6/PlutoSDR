@@ -11,7 +11,7 @@ import dprocessing as dp
 
 
 # initializing constants
-mode        = 'single1'
+mode        = 'single'
 #transmitter = 'BEARD'
 transmitter = 'ANGRY'
 receiver    = 'FISHER'
@@ -24,7 +24,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # swap transmitter and receiver
-transmitter, receiver = receiver, transmitter
+#transmitter, receiver = receiver, transmitter
 
 
 # find connected devices
