@@ -28,7 +28,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 # swap transmitter and receiver
 #transmitter, receiver = receiver, transmitter
 
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='ANGRY', swap=False)
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='ANGRY', swap=False)
 
 
 # create and modulate random bits
@@ -122,11 +122,10 @@ def func(frames, scat):
 animation = FuncAnimation(fig,
                             func=func,
                             fargs=(scat, ),
-                            interval=1,
+                            interval=10,
                             blit=True,
                             repeat=True)
 
 
 plt.show()
 sdrtx.tx_destroy_buffer()
-
