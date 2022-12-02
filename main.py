@@ -28,7 +28,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 # swap transmitter and receiver
 #transmitter, receiver = receiver, transmitter
 
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='ANGRY', swap=False)
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='FISHER', swap=False)
 
 
 # create and modulate random bits
