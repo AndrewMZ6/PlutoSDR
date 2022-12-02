@@ -10,6 +10,7 @@ import utils
 from devexceptions import NoDeviceFoundException
 import dprocessing as dp
 import devices
+import data_gen
 
 
 # initializing constants
@@ -23,12 +24,12 @@ scatter_color       = '#006699'
 spectrum_color      = '#b35900'
 correlation_color   = '#26734d'
 spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
-
+delay = 100
 
 # swap transmitter and receiver
 #transmitter, receiver = receiver, transmitter
 
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='FISHER', swap=False)
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='ANGRY', swap=True)
 
 
 # create and modulate random bits
@@ -67,15 +68,19 @@ tx_signal = np.concatenate((preambula_time_domain, tx_signal))
 assert (preambula_time_domain[:1024] == preambula_time_domain[1024:2048]).all(), 'preambulas part1 and 2 are different!'
 
 
-
+tx_signal = data_gen.generate_sine(40e3, config.SAMPLE_RATE, 1e6)
+#tx_signal = data_gen.complex_constants(2+2j, 10000)
+#tx_signal = data_gen.generate_qpsk(10000)
+tx_signal *= 2**14
 
 # transmission
 sdrtx.tx(tx_signal)
 
-mm = np.array([2+2j, 2-2j, -2+2j, -2-2j])
-fig, axes = plt.subplots()
-axes.grid()
+mm = np.array([2+2j, 2-2j, -2+2j, -2-2j])*4e2
+fig, (axes, axes2) = plt.subplots(2, 1)
+axes.grid(); axes2.grid()
 scat = axes.scatter(mm.real, mm.imag)
+plot1, = axes2.plot(np.arange(config.COMPLEX_SAMPLES_NUMBER), np.arange(config.COMPLEX_SAMPLES_NUMBER))
 
 
 c = 0
@@ -106,23 +111,36 @@ def func(frames, scat):
         m = np.max(q_abs)
         q_normilized = (q/m)*1.4142
 
-    
-
-        data = np.array([q_normilized.real, q_normilized.imag])
+        
+        data = np.array([data_recieved.real, data_recieved.imag])
         scat.set_offsets(data.T)
 
     except ValueError:
         c += 1
         print(f'-> ValueError exception happened: {c}')
 
-    return scat, 
+    return scat,
 
+
+def func2(frames, plot1):
+    data_recieved = sdrrx.rx()
+    ydata = data_recieved.real
+    plot1.set_ydata(ydata)
+
+    return plot1, 
 
 
 animation = FuncAnimation(fig,
                             func=func,
-                            fargs=(scat, ),
-                            interval=10,
+                            fargs=(scat, ), 
+                            interval=delay,
+                            blit=True,
+                            repeat=True)
+
+animation2 = FuncAnimation(fig,
+                            func=func2,
+                            fargs=(plot1,), 
+                            interval=delay,
                             blit=True,
                             repeat=True)
 
