@@ -1,6 +1,7 @@
 import mod
 import numpy as np
 import config
+from matplotlib import pyplot as plt
 
 
 
@@ -38,7 +39,17 @@ def generate_tx_data(frames=10, use_dpd=False, dpd_measure_mode=False) -> tuple:
     return data_compare, tx_signal
 
 
+def generate_sine(f:int) -> np.ndarray:
+    t = np.arange(0, 10, 0.0001, dtype=float)
+    sig = np.exp(-1j*2*np.pi*f*t)
+    return sig
+
+
 if __name__ == '__main__':
     f = _generate_preambula()
     print(f[:2])    # [-11443.99475576+4087.1409842j   -2142.80634916 +668.22613374j]
     print(len(f))   # 2048
+
+    p = generate_sine(1e2)
+    plt.scatter(p.real, p.imag)
+    plt.show()
