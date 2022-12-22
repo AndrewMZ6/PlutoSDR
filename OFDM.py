@@ -50,6 +50,7 @@ def generate_ofdm_withpilots():
 
     # modulate
     M = cp.modulation.QAMModem(2**mu)
+    modBits = M.modulate(bits)
 
     # Put complex data to spectrum
     symbol = np.zeros(K, dtype=complex)
@@ -61,15 +62,20 @@ def generate_ofdm_withpilots():
     ofdmSymbolShifted = SHIFT(ofdmSymbol)
 
     ofdm_time = IDFT(ofdmSymbolShifted)
-    return ofdm_time
+    return ofdm_time, (pilotCarriers, dataCarriers)
 
 
-def degenerate_ofdm_withpilots(time_samples):
+def degenerate_ofdm_withpilots(time_samples, carriersTuple):
     gsize = config.GUARD_SIZE
     fftsize = config.FOURIER_SIZE
     spectrum = DFT(time_samples)
-    removedZeros = np.concatenate([spectrum[gsize:int(fftsize/2)], spectrum[int(fftsize/2) + 1: -gsize]])
-    return removedZeros
+    spectrum = SHIFT(spectrum)
+    removedZeros = np.concatenate([spectrum[gsize:int(fftsize/2)], spectrum[int(fftsize/2) + 1: -(gsize - 1)]])
+
+    pilots = removedZeros[carriersTuple[0]]
+    datas = removedZeros[carriersTuple[1]]
+
+    return removedZeros, (pilots, datas)
 
 
 def generate_ofdm_nopilots():
@@ -110,8 +116,8 @@ def degenerate_ofdm_nopilots(time_samples):
 
 
 if __name__ == '__main__':
-    pp = generate_ofdm_nopilots()
-    s = DFT(pp)
+    pp, t = generate_ofdm_withpilots()
+    s = SHIFT(DFT(pp))
     fig, axes = plt.subplots(1, 2)
     axes[0].plot(np.abs(s))
     axes[0].set_title('spectrum')
@@ -120,10 +126,21 @@ if __name__ == '__main__':
     axes[1].scatter(s.real, s.imag)
     axes[1].set_title('constellation')
     axes[1].grid()
+    
 
-    g = degenerate_ofdm_nopilots(pp)
+
+    g, p = degenerate_ofdm_withpilots(pp, t)
 
     fig2, axes2 = plt.subplots(1, 2)
     axes2[0].plot(np.abs(g))
     axes2[1].scatter(g.real, g.imag)
-    plt.show()
+
+
+    fig3, axes3 = plt.subplots(1, 2)
+    axes3[0].plot(np.abs(p[0]))
+    axes3[1].scatter(p[0].real, p[0].imag)
+
+    fig4, axes4 = plt.subplots(1, 2)
+    axes4[0].plot(np.abs(p[1]))
+    axes4[1].scatter(p[1].real, p[1].imag)
+    plt.show()   

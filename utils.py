@@ -85,10 +85,12 @@ def remove_spectrum_zeros(time_domain_sig: np.ndarray) -> np.ndarray:
     return result
 
 
-def cut_data_from_spectrum(time_domain_signal: np.ndarray) -> np.ndarray:
+def cut_data_from_spectrum(time_domain_signal: np.ndarray, spectrum=False) -> np.ndarray:
     '''
-        Cuts data complex vectors from input spectum using fftsize and guardsize.
-        Expects frequency domain spectrum as input variable 'spectrum'.
+        Cuts data complex vectors from input time domatin signal using
+        config.FOURIER_SIZE and config.GUARD_SIZE parameters.
+
+        Expects time domain data as input.
         Returns frequency domain complex vectors without guard zeros and central zero
 
         _|-|-|_   ->   --
@@ -98,10 +100,14 @@ def cut_data_from_spectrum(time_domain_signal: np.ndarray) -> np.ndarray:
     fftsize = config.FOURIER_SIZE
     guardsize = config.GUARD_SIZE
 
+    
     # If we need to strip single ofdm symbol
     if len(time_domain_signal) == fftsize:
 
-        spectrum = spectrum_and_shift(time_domain_signal)
+        if not spectrum:
+            spectrum = spectrum_and_shift(time_domain_signal)
+        else:
+            spectrum = time_domain_signal
 
         central_zero_index = int(fftsize/2)
         left_part = spectrum[guardsize:central_zero_index]
@@ -111,6 +117,7 @@ def cut_data_from_spectrum(time_domain_signal: np.ndarray) -> np.ndarray:
 
         assert len(result) == fftsize - 2*guardsize, 'the cutted data has wrong size'
     else:
+        print(f'else worker in module {__name__}')
         raise('YOU hacked TOO FAR!')
 
     return result

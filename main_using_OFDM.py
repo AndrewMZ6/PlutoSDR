@@ -21,7 +21,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_TX')
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_RX')
 
 sdrrx.tx_destroy_buffer()
 sdrtx.tx_destroy_buffer()
@@ -29,10 +29,10 @@ sdrrx.rx_destroy_buffer()
 sdrtx.rx_destroy_buffer()
 
 tx_signal = np.array([])
+data_time_domain = OFDM.generate_ofdm_nopilots()
 
 for _ in range(config.NUMBER_OF_OFDM_SYMBOLS):
     
-    data_time_domain = OFDM.generate_ofdm_nopilots()
     tx_signal = np.append(tx_signal, data_time_domain)
 
 
@@ -48,6 +48,23 @@ assert (preambula[:config.FOURIER_SIZE] == preambula[config.FOURIER_SIZE:2*confi
 
 
 
+def summ_ofdm(data, specs=False):
+
+    fftsize = config.FOURIER_SIZE
+    K = len(data)/fftsize
+    K = int(K)
+    s = np.zeros(fftsize, dtype=complex)
+    
+    if not specs:
+        for i in range(K):
+            s += data[i*fftsize:(i+1)*fftsize]
+    else:
+        for i in range(K):
+            chunk = data[i*fftsize:(i+1)*fftsize]
+            s += spectrum_and_shift(chunk)
+
+    return s/K
+
 
 # transmission
 sdrtx.tx(tx_signal)
@@ -55,6 +72,7 @@ sdrtx.tx(tx_signal)
 
 fig, axes = plt.subplots(5, 2)
 fi2g, axes2 = plt.subplots(5, 2)
+fig3, axes3 = plt.subplots(5, 2)
 
 for ne in range(1000):
 
@@ -62,6 +80,9 @@ for ne in range(1000):
         ax[0].cla(); ax[1].cla()
 
     for ax in axes2:
+        ax[0].cla(); ax[1].cla()
+
+    for ax in axes3:
         ax[0].cla(); ax[1].cla()
     
     # receiving
@@ -131,6 +152,25 @@ for ne in range(1000):
     part1, part2, data = freq_corrected_data[:fftsize], freq_corrected_data[fftsize:fftsize*2], freq_corrected_data[fftsize*2:]
     '''
 
+    # Accumulate OFDM
+    summed_ofdm_time_domain = summ_ofdm(data, specs=False)
+    p = spectrum_and_shift(summed_ofdm_time_domain)
+    summed_ofdm_freq_domain = summ_ofdm(data, specs=True)
+    
+    unzeroed_spec_freq_domain = utils.cut_data_from_spectrum(summed_ofdm_freq_domain, spectrum=True)
+    unzeroed_spec_time_domain = utils.cut_data_from_spectrum(summed_ofdm_time_domain, spectrum=False)
+
+    unzeroed_spec_time_domain_spectrum = unzeroed_spec_time_domain
+
+    axes3[0][1].scatter(p.real, p.imag, color=scatter_color, marker='.')
+    axes3[0][1].set_title('TD')
+
+    axes3[1][1].scatter(summed_ofdm_freq_domain.real, summed_ofdm_freq_domain.imag, color=scatter_color, marker='.')
+    axes3[1][1].set_title('FD')
+    # -------------------------
+
+
+
     first_OFDM_symbol = spectrum_and_shift(data[:fftsize])
     axes[4][0].scatter(first_OFDM_symbol.real, first_OFDM_symbol.imag, color=scatter_color, marker='.')
     axes[4][0].set_title('first_OFDM_symbol after freq ')
@@ -155,12 +195,25 @@ for ne in range(1000):
 
 
 
+    q = unzeroed_spec_time_domain_spectrum*eq
+    q_abs = np.abs(q)
+    m = np.max(q_abs)
+    q_normilized = (q/m)*1.4142
+    axes3[0][0].scatter(q_normilized.real, q_normilized.imag, color=scatter_color, marker='.')
+    axes3[0][0].set_title('TD eq')
+
+    q = unzeroed_spec_time_domain*eq
+    q_abs = np.abs(q)
+    m = np.max(q_abs)
+    q_normilized = (q/m)*1.4142
+    axes3[1][0].scatter(q_normilized.real, q_normilized.imag, color=scatter_color, marker='.')
+    axes3[1][0].set_title('FD eq')
+
+
     for i in range(5):
         try:
             axes[i][1].scatter(s[i].real, s[i].imag, color=scatter_color,marker='.')
             axes[i][1].set_title(f's[{i}]')
-            axes[i][1].grid()
-            axes[i][0].grid()
         except IndexError:
             print('Index Error ')
 
@@ -181,24 +234,19 @@ for ne in range(1000):
     try:
         axes2[0][1].scatter(a1.real, a1.imag, color=scatter_color,marker='.')
         axes2[0][1].set_title(f's[0]')
-        axes2[0][1].grid()
 
         axes2[1][1].scatter(a2.real, a2.imag, color=scatter_color,marker='.')
         axes2[1][1].set_title(f's[1]')
-        axes2[1][1].grid()
 
         axes2[2][1].scatter(a3.real, a3.imag, color=scatter_color,marker='.')
         axes2[2][1].set_title(f's[2]')
-        axes2[2][1].grid()
 
         axes2[3][1].scatter(a4.real, a4.imag, color=scatter_color,marker='.')
         axes2[3][1].set_title(f's[3]')
-        axes2[3][1].grid()
 
 
         axes2[4][1].scatter(a5.real, a5.imag, color=scatter_color,marker='.')
         axes2[4][1].set_title(f's[4]')
-        axes2[4][1].grid()
 
         axes2[3][1].plot(data_recieved[:10].real)
         axes2[2][1].plot(data_recieved[:10].imag)
@@ -211,8 +259,6 @@ for ne in range(1000):
         try:
             axes2[i][0].scatter(s[i+5].real, s[i+5].imag, color=scatter_color,marker='.')
             axes2[i][0].set_title(f's[{i+5}]')
-            axes2[i][1].grid()
-            axes2[i][0].grid()
         except IndexError:
             print('Index Error ')
 
