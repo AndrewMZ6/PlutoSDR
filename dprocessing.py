@@ -1,5 +1,6 @@
 import numpy as np
 from matplotlib import pyplot as plt
+import config
 
 
 def correlation(reference, received, shift):
@@ -15,10 +16,12 @@ def correlation(reference, received, shift):
 
         see "correlation_testing.py" for graphs
     '''
-
+    print(f'reference len: {len(reference)}, received len: {len(received)}')
     # reference sig consists of 2 preambulas
     pream_length = int(len(reference)/2)
-    corr = np.correlate(received[shift:shift + pream_length*15], reference, 'full')
+    right_cut_limit = config.NUMBER_OF_OFDM_SYMBOLS*config.FOURIER_SIZE
+    corr = np.correlate(received[shift:shift + right_cut_limit*2]
+                        , reference, 'full')
     abs_corr = np.abs(corr)
     max_x = abs_corr.argmax()
 
@@ -32,8 +35,8 @@ def correlation(reference, received, shift):
         max_x += pream_length
     '''
 
-    left_cut_index = max_x - pream_length*2 + shift
-    right_cut_index = left_cut_index + pream_length*7
+    left_cut_index = max_x - pream_length*2 + shift + 1
+    right_cut_index = left_cut_index + right_cut_limit + 2*config.FOURIER_SIZE
 
 
     cutted = received[left_cut_index:right_cut_index]
