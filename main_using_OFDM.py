@@ -9,6 +9,7 @@ import utils
 from devexceptions import NoDeviceFoundException
 import dprocessing as dp
 import devices
+import scipy
 import OFDM
 
 
@@ -21,7 +22,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_RX')
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_TX')
 
 sdrrx.tx_destroy_buffer()
 sdrtx.tx_destroy_buffer()
@@ -29,7 +30,7 @@ sdrrx.rx_destroy_buffer()
 sdrtx.rx_destroy_buffer()
 
 tx_signal = np.array([])
-data_time_domain = OFDM.generate_ofdm_nopilots()
+data_time_domain, carriersTuple = OFDM.generate_ofdm_withpilots()
 
 for _ in range(config.NUMBER_OF_OFDM_SYMBOLS):
     
@@ -45,6 +46,26 @@ tx_signal = np.concatenate((preambula, tx_signal))
 tx_signal *= 2**14
 
 assert (preambula[:config.FOURIER_SIZE] == preambula[config.FOURIER_SIZE:2*config.FOURIER_SIZE]).all(), 'preambulas part1 and 2 are different!'
+
+
+
+def channelEstimate(OFDM_TD):
+    gsize = config.GUARD_SIZE    
+    fftsize = config.FOURIER_SIZE
+    K = fftsize - 2*gsize - 1 + 1 
+    allCarriers = np.arange(K)
+
+    removedZeros, (pilots, datas) = OFDM.degenerate_ofdm_withpilots(OFDM_TD, carriersTuple)
+    pilotValue = 2+2j
+    Hest_at_pilots = pilots/pilotValue
+
+    pilotCarriers = carriersTuple[0]
+    Hest_abs = scipy.interpolate.interp1d(pilotCarriers, abs(Hest_at_pilots), kind='linear')(allCarriers)
+    Hest_phase = scipy.interpolate.interp1d(pilotCarriers, np.angle(Hest_at_pilots), kind='linear')(allCarriers)
+    Hest = Hest_abs*np.exp(1j*Hest_phase)
+
+    return Hest
+
 
 
 
@@ -73,6 +94,7 @@ sdrtx.tx(tx_signal)
 fig, axes = plt.subplots(5, 2)
 fi2g, axes2 = plt.subplots(5, 2)
 fig3, axes3 = plt.subplots(5, 2)
+fig4, axes4 = plt.subplots(5, 2)
 
 for ne in range(1000):
 
@@ -83,6 +105,10 @@ for ne in range(1000):
         ax[0].cla(); ax[1].cla()
 
     for ax in axes3:
+        ax[0].cla(); ax[1].cla()
+
+
+    for ax in axes4:
         ax[0].cla(); ax[1].cla()
     
     # receiving
@@ -169,6 +195,19 @@ for ne in range(1000):
     axes3[1][1].set_title('FD')
     # -------------------------
 
+    # Degenerating OFDM with pilots
+    
+    boo, pilsAnddata = OFDM.degenerate_ofdm_withpilots(summed_ofdm_time_domain, carriersTuple)
+    axes4[0][0].scatter(boo.real, boo.imag, color=scatter_color, marker='.')
+    axes4[0][1].plot(np.abs(boo))
+
+    Hest = channelEstimate(summed_ofdm_time_domain)
+    equalized_ofdm = boo/Hest
+
+    axes4[1][0].scatter(equalized_ofdm.real, equalized_ofdm.imag, color=scatter_color, marker='.')
+    axes4[1][1].plot(np.abs(equalized_ofdm))
+    axes4[1][0].set_title('equalized')
+    axes4[1][1].set_title('equalized')
 
 
     first_OFDM_symbol = spectrum_and_shift(data[:fftsize])
