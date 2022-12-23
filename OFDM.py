@@ -62,7 +62,7 @@ def generate_ofdm_withpilots():
     ofdmSymbolShifted = SHIFT(ofdmSymbol)
 
     ofdm_time = IDFT(ofdmSymbolShifted)
-    return ofdm_time, (pilotCarriers, dataCarriers)
+    return ofdm_time, (pilotCarriers, dataCarriers), bits
 
 
 def degenerate_ofdm_withpilots(time_samples, carriersTuple):
@@ -115,9 +115,25 @@ def degenerate_ofdm_nopilots(time_samples):
     return removedZeros
 
 
+def positivise(data_from_spectrum):
+    '''
+        Shifts all constellation points to the first quarter
+        Input params:
+            data_from_spectrum - data taken from spectrum with pilots
+    '''
+    I_values = data_from_spectrum.real
+    Q_values = data_from_spectrum.imag
+    positivised_constellation = np.vectorize(complex)(np.abs(I_values), np.abs(Q_values))
+
+    return positivised_constellation
+
+
+
+
 if __name__ == '__main__':
     pp, t = generate_ofdm_withpilots()
     s = SHIFT(DFT(pp))
+    
     fig, axes = plt.subplots(1, 2)
     axes[0].plot(np.abs(s))
     axes[0].set_title('spectrum')
@@ -127,7 +143,8 @@ if __name__ == '__main__':
     axes[1].set_title('constellation')
     axes[1].grid()
     
-
+    kgh = np.array([1+1j, .3-7j, -1.3+3.44j, -.2-.01j])
+    print(positivise(kgh))
 
     g, p = degenerate_ofdm_withpilots(pp, t)
 

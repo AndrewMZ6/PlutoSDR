@@ -8,9 +8,9 @@ from devexceptions import NoDeviceFoundException
 import dprocessing as dp
 
 
-mode = 'single'
-receiver    = 'FISHER'
-receiver    = 'ANGRY'
+mode = 'single1'
+receiver    = 'RED_PIMPLE_TX'
+receiver    = 'RED_PIMPLE_RX'
 
 
 
@@ -39,9 +39,10 @@ sleep(2)
 start = time()
 
 
-n = 10
+n = 100
 for i in range(n):
     if not i:
+        data = sdrrx.rx()
         c = time()
 
     data = sdrrx.rx()

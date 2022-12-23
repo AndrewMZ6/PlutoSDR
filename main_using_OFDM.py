@@ -11,6 +11,7 @@ import dprocessing as dp
 import devices
 import scipy
 import OFDM
+import commpy 
 
 
 fs          = config.SAMPLE_RATE
@@ -30,7 +31,7 @@ sdrrx.rx_destroy_buffer()
 sdrtx.rx_destroy_buffer()
 
 tx_signal = np.array([])
-data_time_domain, carriersTuple = OFDM.generate_ofdm_withpilots()
+data_time_domain, carriersTuple, beets = OFDM.generate_ofdm_withpilots()
 
 for _ in range(config.NUMBER_OF_OFDM_SYMBOLS):
     
@@ -47,6 +48,50 @@ tx_signal *= 2**14
 
 assert (preambula[:config.FOURIER_SIZE] == preambula[config.FOURIER_SIZE:2*config.FOURIER_SIZE]).all(), 'preambulas part1 and 2 are different!'
 
+
+def biterr(bits1, bits2):
+    y = bits1 == bits2
+    L = len(bits1)
+    s = np.sum(y)
+    ber = (L - s)/L
+
+    return ber
+
+
+def find_evm(pos_data, ref):
+
+    L = len(pos_data)
+    ref_array = np.zeros(L, dtype=complex)
+    ref_array[:] = ref
+    
+    I_err_array = pos_data.real - ref_array.real
+    Q_err_array = pos_data.imag - ref_array.imag
+
+    E_module_squared = I_err_array**2 + Q_err_array**2
+    E_module_squared_test = np.abs(pos_data)**2
+    P_ref = np.abs(ref)**2
+
+    EVM_number = (np.sqrt(np.sum(E_module_squared)/L))/P_ref
+    
+
+    return EVM_number
+
+
+
+
+def calculateEVM(spectrum_with_pilots, data_carrs, ref_complex):
+    '''
+        Returns EVM number.
+        Input params:
+            spectrum_with_pilots - spectrum with pilots but without any zeros
+            data_carrs           - array with data carriers indicies
+            ref_complex          - complex number that represents qpsk modulation vector. 1+1j
+    '''
+    data = spectrum_with_pilots[data_carrs]
+    pos_data = OFDM.positivise(data)
+    evm = find_evm(pos_data, ref_complex)
+
+    return evm
 
 
 def channelEstimate(OFDM_TD):
@@ -65,8 +110,6 @@ def channelEstimate(OFDM_TD):
     Hest = Hest_abs*np.exp(1j*Hest_phase)
 
     return Hest
-
-
 
 
 def summ_ofdm(data, specs=False):
@@ -95,7 +138,10 @@ fig, axes = plt.subplots(5, 2)
 fi2g, axes2 = plt.subplots(5, 2)
 fig3, axes3 = plt.subplots(5, 2)
 fig4, axes4 = plt.subplots(5, 2)
+fig5, axes5 = plt.subplots()
 
+biterrs = np.array([])
+evms = np.array([])
 for ne in range(1000):
 
     for ax in axes:
@@ -110,6 +156,8 @@ for ne in range(1000):
 
     for ax in axes4:
         ax[0].cla(); ax[1].cla()
+
+    axes5.cla()
     
     # receiving
     data_recieved = sdrrx.rx()
@@ -181,10 +229,13 @@ for ne in range(1000):
     # Accumulate OFDM
     summed_ofdm_time_domain = summ_ofdm(data, specs=False)
     p = spectrum_and_shift(summed_ofdm_time_domain)
+    
     summed_ofdm_freq_domain = summ_ofdm(data, specs=True)
     
     unzeroed_spec_freq_domain = utils.cut_data_from_spectrum(summed_ofdm_freq_domain, spectrum=True)
     unzeroed_spec_time_domain = utils.cut_data_from_spectrum(summed_ofdm_time_domain, spectrum=False)
+
+    r = unzeroed_spec_freq_domain[carriersTuple[1]]
 
     unzeroed_spec_time_domain_spectrum = unzeroed_spec_time_domain
 
@@ -193,21 +244,48 @@ for ne in range(1000):
 
     axes3[1][1].scatter(summed_ofdm_freq_domain.real, summed_ofdm_freq_domain.imag, color=scatter_color, marker='.')
     axes3[1][1].set_title('FD')
+
+    axes3[2][0].scatter(r.real, r.imag, color=scatter_color, marker='.')
     # -------------------------
 
     # Degenerating OFDM with pilots
     
     boo, pilsAnddata = OFDM.degenerate_ofdm_withpilots(summed_ofdm_time_domain, carriersTuple)
     axes4[0][0].scatter(boo.real, boo.imag, color=scatter_color, marker='.')
+    axes4[0][0].set_title('boo')
     axes4[0][1].plot(np.abs(boo))
 
     Hest = channelEstimate(summed_ofdm_time_domain)
     equalized_ofdm = boo/Hest
 
+    eq_r = equalized_ofdm[carriersTuple[1]]
+    M  = commpy.modulation.QAMModem(4)
+    demod_bits = M.demodulate(eq_r, 'hard')
+    print(f'len eq_r: {len(eq_r)}')
+    print(f'len dem bits: {len(demod_bits)}')
+    print(f'len bits: {len(beets)}')
+    y = biterr(beets, demod_bits)
+    
+    print(f'-> ber = {y}')
+    
+
+    E = calculateEVM(equalized_ofdm, carriersTuple[1], 1+1j)
+    print(f'-> EVM = {E*100:.2f} %')
+    snr = 1/(E**2)
+    print(f'-> SNR = {10*np.log10(snr):.2f}')
+
+    evms = np.append(evms, snr)
+    biterrs = np.append(biterrs, y)
+
     axes4[1][0].scatter(equalized_ofdm.real, equalized_ofdm.imag, color=scatter_color, marker='.')
     axes4[1][1].plot(np.abs(equalized_ofdm))
     axes4[1][0].set_title('equalized')
     axes4[1][1].set_title('equalized')
+    axes4[2][0].scatter(eq_r.real, eq_r.imag, color=scatter_color, marker='.')
+   
+    axes5.scatter(equalized_ofdm.real, equalized_ofdm.imag, color=scatter_color, marker='.')
+    axes4[3][0].set_yscale('log')
+    axes4[3][0].scatter(evms, biterrs)
 
 
     first_OFDM_symbol = spectrum_and_shift(data[:fftsize])
@@ -305,7 +383,7 @@ for ne in range(1000):
     #demod_data = mod.qpsk_demodulate(s[0])
     sdrrx.rx_destroy_buffer()
     print('\n-------- next iteration --------\n')
-    plt.pause(1)
+    plt.pause(0.1)
 
 
 
