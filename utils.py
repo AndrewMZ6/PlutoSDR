@@ -2,6 +2,8 @@ import os
 import re
 import config
 import numpy as np
+import scipy
+import OFDM
 
 
 
@@ -54,8 +56,6 @@ def remove_spectrum_zeros(time_domain_sig: np.ndarray) -> np.ndarray:
     
     L = len(time_domain_sig)
     K = L/fftsize
-    print(f'-> L = {L}')
-    print(f'-> K = {K}')
     #if len(time_domain_sig) > 1024:
 
 
@@ -124,7 +124,84 @@ def cut_data_from_spectrum(time_domain_signal: np.ndarray, spectrum=False) -> np
 
 
 
+def biterr(bits1, bits2):
+    y = np.logical_xor(bits1, bits2)
+    L = len(bits1)
+    s = np.sum(y)
+    ber = s/L
 
+    return ber
+
+
+def find_evm(pos_data, ref):
+
+    L = len(pos_data)
+    ref_array = np.zeros(L, dtype=complex)
+    ref_array[:] = ref
+    
+    I_err_array = pos_data.real - ref_array.real
+    Q_err_array = pos_data.imag - ref_array.imag
+
+    E_module_squared = I_err_array**2 + Q_err_array**2
+    P_ref = np.abs(ref)**2
+
+    EVM_number = (np.sqrt(np.sum(E_module_squared)/L))/P_ref
+    
+
+    return EVM_number
+
+
+
+
+def calculateEVM(spectrum_with_pilots, data_carrs, ref_complex):
+    '''
+        Returns EVM number.
+        Input params:
+            spectrum_with_pilots - spectrum with pilots but without any zeros
+            data_carrs           - array with data carriers indicies
+            ref_complex          - complex number that represents qpsk modulation vector. 1+1j
+    '''
+    data = spectrum_with_pilots[data_carrs]
+    pos_data = OFDM.positivise(data)
+    evm = find_evm(pos_data, ref_complex)
+
+    return evm
+
+
+def channelEstimate(OFDM_TD, carriersTuple):
+    gsize = config.GUARD_SIZE    
+    fftsize = config.FOURIER_SIZE
+    K = fftsize - 2*gsize - 1 + 1 
+    allCarriers = np.arange(K)
+
+    removedZeros, (pilots, datas) = OFDM.degenerate_ofdm_withpilots(OFDM_TD, carriersTuple)
+    pilotValue = 2+2j
+    Hest_at_pilots = pilots/pilotValue
+
+    pilotCarriers = carriersTuple[0]
+    Hest_abs = scipy.interpolate.interp1d(pilotCarriers, abs(Hest_at_pilots), kind='linear')(allCarriers)
+    Hest_phase = scipy.interpolate.interp1d(pilotCarriers, np.angle(Hest_at_pilots), kind='linear')(allCarriers)
+    Hest = Hest_abs*np.exp(1j*Hest_phase)
+
+    return Hest
+
+
+def summ_ofdm(data, specs=False):
+
+    fftsize = config.FOURIER_SIZE
+    K = len(data)/fftsize
+    K = int(K)
+    s = np.zeros(fftsize, dtype=complex)
+    
+    if not specs:
+        for i in range(K):
+            s += data[i*fftsize:(i+1)*fftsize]
+    else:
+        for i in range(K):
+            chunk = data[i*fftsize:(i+1)*fftsize]
+            s += spectrum_and_shift(chunk)
+
+    return s/K
 
 
 
