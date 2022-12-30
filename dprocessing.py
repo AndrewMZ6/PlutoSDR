@@ -26,7 +26,7 @@ def correlation(reference, received, shift):
     tx_length = pream_length + payload_length
 
     # cut piece of received data for correlation
-    received_data = received[shift:shift + tx_length*3]
+    received_data = received[shift:shift + tx_length*config.NUMBER_OF_CUTTED_FRAMES_FOR_CORRELATION]
 
     
     corr = np.correlate(received_data, reference, 'full')

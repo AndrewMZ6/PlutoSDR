@@ -11,8 +11,6 @@ import commpy
 from collections import deque
 
 
-tails_FFT = {1024: 2047, 128: 255, 512: 1023}
-
 
 fs          = config.SAMPLE_RATE
 fftsize     = config.FOURIER_SIZE
@@ -23,7 +21,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # Devices initialization
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_TX')
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_RX')
 
 
 sdrrx.tx_destroy_buffer()
@@ -65,23 +63,13 @@ sdrtx.tx(tx_signal)
 #       V
 
 
-
-'''
-fig, axes = plt.subplots(5, 2)
-fi2g, axes2 = plt.subplots(5, 2)
-fig3, axes3 = plt.subplots(5, 2)
-fig4, axes4 = plt.subplots(5, 2)
-fig5, axes5 = plt.subplots()
-'''
-
 fig6, axes6 = plt.subplots(2, 2)
 
 ar = np.array([1 + 1j, 1 - 1j, -1 + 1j, -1 - 1j])*2
 dq = deque(np.zeros(10), maxlen=10)
 
 
-#temp = config.FOURIER_SIZE*50 + tails_FFT[fftsize]
-temp = 4863
+temp = config.NUMBER_OF_CUTTED_FRAMES_FOR_CORRELATION*(config.FOURIER_SIZE*(2 + config.NUMBER_OF_OFDM_SYMBOLS)) + 2*fftsize - 1
 x = np.arange(100e3)
 y = np.zeros(100_000)
 
@@ -89,13 +77,10 @@ x2 = np.arange(temp)
 y2 = np.zeros(temp)
 
 
-
-
 axes6[0][0].set_xlim([0, 100e3])
 axes6[0][0].set_ylim([0, 3e5])
 axes6[0][0].set_xticklabels([])
 plot1, = axes6[0][0].plot(x, y)
-
 
 scat1 = axes6[0][1].scatter(ar.real, ar.imag, marker='.')
 
@@ -122,6 +107,7 @@ def update_func(frames, scat1, plot1, plot2, plot3):
 
 
     plot1.set_ydata(np.abs(spectrum_and_shift(data_recieved)))
+    
 
     # Main correlation 
     cutted, abs_first_correlation = dp.correlation(preambula, data_recieved, fftsize*2)
@@ -168,7 +154,7 @@ def update_func(frames, scat1, plot1, plot2, plot3):
     plot3.set_ydata(dq)
 
     return scat1, plot1, plot2, plot3
-    
+
       
 
 anim = FuncAnimation(fig6,
