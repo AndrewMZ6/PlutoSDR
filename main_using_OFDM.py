@@ -80,7 +80,8 @@ ar = np.array([1 + 1j, 1 - 1j, -1 + 1j, -1 - 1j])*2
 dq = deque(np.zeros(10), maxlen=10)
 
 
-temp = config.FOURIER_SIZE*50 + tails_FFT[fftsize]
+#temp = config.FOURIER_SIZE*50 + tails_FFT[fftsize]
+temp = 4863
 x = np.arange(100e3)
 y = np.zeros(100_000)
 

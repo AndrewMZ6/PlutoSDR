@@ -17,49 +17,27 @@ def SHIFT(s):
 def generate_ofdm_withpilots():
     gsize = config.GUARD_SIZE    
     fftsize = config.FOURIER_SIZE
-    P = config.NUMBER_OF_PILOTS 
+    P = config.NUMBER_OF_PILOTS
 
     K = fftsize - 2*gsize - 1 + 1  # -1 of central zero, and +1 of right guard
-    assert K%2 == 0, f'OFDM.py -> generate_ofdm_withpilots: K = {K} is not even!'
 
     # indicies of all subcarriers
     allCarriers = np.arange(K)
 
+
     pilotStep = K//P
-    print(f'K/P = {K/P}')
-
-    halfedK = int(K/2)
-
-    LP = allCarriers[:halfedK]
-    RP = allCarriers[halfedK:]
-
-    halfedP = int(P/2)
-
-    #pilotStep = halfedK//halfedP
-
-
-    LPpilotCarriers = LP[::pilotStep]
-    LPdataCarriers = np.delete(LP, LPpilotCarriers)
-
-    RPpilotCarriers = RP[-1::-pilotStep]
-    RPpilotCarriers = np.flip(RPpilotCarriers)
-    newRPpilotCarriers = RPpilotCarriers - halfedK
-    RPdataCarriers = np.delete(RP, newRPpilotCarriers)
-
-
-    
-    print(f'K = {K}')
-    print(f'P = {P}')
-    print(f'pilotStep = {pilotStep}')
 
     # indicies of pilots
-    pilotCarriers = np.concatenate([LPpilotCarriers, RPpilotCarriers])
+    pilotCarriers = allCarriers[::pilotStep]
     
 
     pilotValue = 2 + 2j
 
+    pilotCarriers = np.hstack([pilotCarriers, np.array([allCarriers[-1]])])
 
-    dataCarriers = np.concatenate([LPdataCarriers, RPdataCarriers])
+    P = P + 1
+
+    dataCarriers = np.delete(allCarriers, pilotCarriers)
     
     # bits per symbol
     mu = 2
@@ -78,8 +56,6 @@ def generate_ofdm_withpilots():
     symbol = np.zeros(K, dtype=complex)
     symbol[pilotCarriers] = pilotValue
     symbol[dataCarriers] = modBits
-    print(f'-> Number of pilots: {pilotCarriers.size}')
-    print(f'-> Number user data: {dataCarriers.size}')
 
     ofdmSymbol = np.concatenate([np.zeros(gsize, dtype=complex), symbol[:int(K/2)], np.zeros(1, dtype=complex), symbol[int(K/2):], np.zeros(gsize-1, dtype=complex)])
 
@@ -155,7 +131,7 @@ def positivise(data_from_spectrum):
 
 
 if __name__ == '__main__':
-    pp, t, bits = generate_ofdm_withpilots()
+    pp, t = generate_ofdm_withpilots()
     s = SHIFT(DFT(pp))
     
     fig, axes = plt.subplots(1, 2)

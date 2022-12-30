@@ -22,8 +22,11 @@ def correlation(reference, received, shift):
     # number of payload data points
     payload_length = config.NUMBER_OF_OFDM_SYMBOLS*config.FOURIER_SIZE
 
+    # the whole tx signal length
+    tx_length = pream_length + payload_length
+
     # cut piece of received data for correlation
-    received_data = received[shift:shift + config.COMPLEX_SAMPLES_NUMBER - shift]
+    received_data = received[shift:shift + tx_length*3]
 
     
     corr = np.correlate(received_data, reference, 'full')
@@ -34,7 +37,7 @@ def correlation(reference, received, shift):
     left_cut_index = max_x + shift - pream_length + 1
 
     #
-    right_cut_index = left_cut_index + payload_length + pream_length
+    right_cut_index = left_cut_index + tx_length
 
 
     cutted = received[left_cut_index:right_cut_index]
