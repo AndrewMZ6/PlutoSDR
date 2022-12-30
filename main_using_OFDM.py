@@ -1,17 +1,12 @@
 import numpy as np
 from time import sleep
 from matplotlib import pyplot as plt
-from matplotlib.animation import FuncAnimation
 import config
 import dprocessing as dp
 import devices
 import utils
 import OFDM
 import commpy 
-from collections import deque
-
-
-tails_FFT = {1024: 2047, 128: 255, 512: 1023}
 
 
 fs          = config.SAMPLE_RATE
@@ -23,8 +18,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # Devices initialization
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_TX')
-
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_RX')
 
 sdrrx.tx_destroy_buffer()
 sdrtx.tx_destroy_buffer()
@@ -66,118 +60,115 @@ sdrtx.tx(tx_signal)
 
 
 
-'''
-fig, axes = plt.subplots(5, 2)
-fi2g, axes2 = plt.subplots(5, 2)
-fig3, axes3 = plt.subplots(5, 2)
-fig4, axes4 = plt.subplots(5, 2)
-fig5, axes5 = plt.subplots()
-'''
+fig6, axes6 = plt.subplots(2, 1)
 
-fig6, axes6 = plt.subplots(2, 2)
-
-ar = np.array([1 + 1j, 1 - 1j, -1 + 1j, -1 - 1j])*2
-dq = deque(np.zeros(10), maxlen=10)
+# containers for storing BER vs SNR data
+biterrs_array = np.array([])
+snr_array = np.array([])
 
 
-#temp = config.FOURIER_SIZE*50 + tails_FFT[fftsize]
-temp = 4863
-x = np.arange(100e3)
-y = np.zeros(100_000)
+flag = True
+try:
+    for ne in range(60):
 
-x2 = np.arange(temp)
-y2 = np.zeros(temp)
+        N = 10
+        ber = 0
+        snrdB = 0
+        for oo in range(N):
 
+            # Receiving
+            data_recieved = sdrrx.rx()
 
-
-
-axes6[0][0].set_xlim([0, 100e3])
-axes6[0][0].set_ylim([0, 3e5])
-axes6[0][0].set_xticklabels([])
-plot1, = axes6[0][0].plot(x, y)
-
-
-scat1 = axes6[0][1].scatter(ar.real, ar.imag, marker='.')
-
-axes6[1][0].set_xlim([0, temp])
-axes6[1][0].set_ylim([0, 3e3])
-axes6[1][0].set_xticklabels([])
-plot2, = axes6[1][0].plot(x2, y2)
-
-axes6[1][1].set_ylim([-.1, 0.6])
-axes6[1][1].set_xticklabels([])
-
-plot3, = axes6[1][1].plot(np.arange(10), np.zeros(10))
-
-
-
-M  = commpy.modulation.QAMModem(4)
-
-def update_func(frames, scat1, plot1, plot2, plot3):
+            # Main correlation 
+            cutted, abs_first_correlation = dp.correlation(preambula, data_recieved, fftsize*2)
             
+            
+            # Unpacking preambulas and payload from cutted data
+            part1, part2, data = cutted[:fftsize], cutted[fftsize:fftsize*2], cutted[fftsize*2:]
+
+
+            # Accumulate OFDM
+            summed_ofdm_time_domain = utils.summ_ofdm(data, specs=False)
+            
+
+            # Degenerating OFDM with pilots
+            boo, pilsAnddata = OFDM.degenerate_ofdm_withpilots(summed_ofdm_time_domain, carriersTuple)
+            
+
+            # 
+            Hest = utils.channelEstimate(summed_ofdm_time_domain, carriersTuple)
+            equalized_ofdm = boo/Hest
+
+            eq_r = equalized_ofdm[carriersTuple[1]]
+            
+            M  = commpy.modulation.QAMModem(4)
+            demod_bits = M.demodulate(eq_r, 'hard')
+
+
+            ber_pimple = utils.biterr(beets, demod_bits)
+            
+            ber += ber_pimple
+
+            E = utils.calculateEVM(equalized_ofdm, carriersTuple[1], 1+1j)
+            snr = 1/(E**2)
+            snrdB += 10*np.log10(snr)
+            
+            
+        
+        ber /= N
+        snrdB /= N
+        
+        print(f'-> BER = {ber}')
+           
+        print(f'-> SNR = {snrdB:.2f}')
+
+        snr_array = np.append(snr_array, snrdB)
+        biterrs_array = np.append(biterrs_array, ber)
+
+
+        sdrrx.rx_destroy_buffer()
+        print(f'\n-------- iteration {ne + 1} --------\n')
+
+
+
+
+        HCG = sdrtx.tx_hardwaregain_chan0
+        if flag:
+            if HCG == -60:
+                flag = False
+            sdrtx.tx_hardwaregain_chan0 -= 1
+        else:   
+            if HCG == -1:
+                flag = True
+            sdrtx.tx_hardwaregain_chan0 += 1
+
+
+        print(f'tx gain = {sdrtx.tx_hardwaregain_chan0}')
+        #plt.pause(1)
+
     
-    # Receiving
-    data_recieved = sdrrx.rx()
+    # BER vs SNR log
+    axes6[0].set_yscale('log')
+    axes6[0].plot(snr_array, biterrs_array, color=scatter_color, marker='.', linestyle='None')
+    axes6[0].grid()
+    axes6[0].set_title('BER/SNR log')
 
 
-
-    plot1.set_ydata(np.abs(spectrum_and_shift(data_recieved)))
-
-    # Main correlation 
-    cutted, abs_first_correlation = dp.correlation(preambula, data_recieved, fftsize*2)
+    axes6[1].plot(snr_array, biterrs_array, color=scatter_color, marker='.', linestyle='None')
+    axes6[1].grid()
+    axes6[1].set_title('BER/SNR linear')
     
-    
-    # Unpacking preambulas and payload from cutted data
-    part1, part2, data = cutted[:fftsize], cutted[fftsize:fftsize*2], cutted[fftsize*2:]
+    np.save(f'snr_array{config.FOURIER_SIZE}', snr_array)
+    np.save(f'biterrs_array{config.FOURIER_SIZE}', biterrs_array)
 
 
-    
-    # Accumulate OFDM
-    summed_ofdm_time_domain = utils.summ_ofdm(data, specs=False)
-    
-
-    # Degenerating OFDM with pilots
-    boo, pilsAnddata = OFDM.degenerate_ofdm_withpilots(summed_ofdm_time_domain, carriersTuple)
+    plt.show()
+    sdrtx.tx_destroy_buffer()
     
 
-    # 
-    Hest = utils.channelEstimate(summed_ofdm_time_domain, carriersTuple)
-    equalized_ofdm = boo/Hest
-
-    eq_r = equalized_ofdm[carriersTuple[1]]
-    
-    
-    demod_bits = M.demodulate(eq_r, 'hard')
-
-
-    ber_pimple = utils.biterr(beets, demod_bits)
-    dq.append(ber_pimple)
-    
-
-    E = utils.calculateEVM(equalized_ofdm, carriersTuple[1], 1+1j)
-    snr = 1/(E**2)
-    #snrdB += 10*np.log10(snr)
-
-
-    plot2.set_ydata(abs_first_correlation)
-    
-
-    data = np.array([eq_r.real, eq_r.imag])
-    scat1.set_offsets(data.T)
-
-    plot3.set_ydata(dq)
-
-    return scat1, plot1, plot2, plot3
-    
-      
-
-anim = FuncAnimation(fig6,
-                    func=update_func,
-                    fargs=(scat1, plot1, plot2, plot3),
-                    interval=10,
-                    blit=True,
-                    repeat=True)
-
-
-
-plt.show()
+except KeyboardInterrupt:
+    print('\nExecution has been interrupted')
+    sdrrx.tx_destroy_buffer()
+    sdrtx.tx_destroy_buffer()
+    sdrrx.rx_destroy_buffer()
+    sdrtx.rx_destroy_buffer()
