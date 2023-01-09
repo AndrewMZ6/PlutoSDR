@@ -95,12 +95,12 @@ axes6[1][1].set_xticklabels([])
 plot3, = axes6[1][1].plot(np.arange(10), np.zeros(10))
 
 
-
+accumulate_evm = np.array([])
 M  = commpy.modulation.QAMModem(4)
 
 def update_func(frames, scat1, plot1, plot2, plot3):
             
-    
+    global accumulate_evm
     # Receiving
     data_recieved = sdrrx.rx()
 
@@ -141,10 +141,14 @@ def update_func(frames, scat1, plot1, plot2, plot3):
     
 
     E = utils.calculateEVM(equalized_ofdm, carriersTuple[1], 1+1j)
-    snr = 1/(E**2)
-    #snrdB += 10*np.log10(snr)
+    if frames:
+        accumulate_evm = np.append(accumulate_evm, E)        
+        s = np.sum(accumulate_evm)/frames
 
-
+        if E > s:
+            print(f'{E} > {s}. IGNORE OFDM!-------------')
+        
+    
     plot2.set_ydata(abs_first_correlation)
     
 
@@ -160,7 +164,7 @@ def update_func(frames, scat1, plot1, plot2, plot3):
 anim = FuncAnimation(fig6,
                     func=update_func,
                     fargs=(scat1, plot1, plot2, plot3),
-                    interval=10,
+                    interval=100,
                     blit=True,
                     repeat=True)
 
