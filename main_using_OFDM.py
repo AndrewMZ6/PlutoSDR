@@ -69,7 +69,7 @@ snr_array = np.array([])
 
 flag = True
 try:
-    for ne in range(60):
+    for ne in range(30):
 
         N = 10
         ber = 0
