@@ -74,7 +74,7 @@ try:
     # Outer for loop with changing gain
     for ne in range(30):
 
-        N = 100
+        N = 50
         ber = 0
         snrdB = 0
         N_initial_skip = 50
@@ -169,7 +169,7 @@ try:
 
         print(f'tx gain = {sdrtx.tx_hardwaregain_chan0}')
         print(f'inner loop counter = {inner_loop_counter}')
-        print(f'inner total loop counter = {inner_total_loop_counter}')
+        print(f'inner total loop counter = {inner_total_loop_counter - N_initial_skip}')
         print(f'good / not_good = {inner_loop_counter/(inner_total_loop_counter - N_initial_skip):.2f}')
         #plt.pause(1)
 

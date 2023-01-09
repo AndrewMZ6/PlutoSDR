@@ -169,8 +169,9 @@ def calculateEVM(spectrum_with_pilots, data_carrs, ref_complex):
 
 
 def channelEstimate(OFDM_TD, carriersTuple):
-    gsize = config.GUARD_SIZE    
+    
     fftsize = config.FOURIER_SIZE
+    gsize, P = config.GUARDS_AND_PILOTS[fftsize]
     K = fftsize - 2*gsize - 1 + 1 
     allCarriers = np.arange(K)
 
