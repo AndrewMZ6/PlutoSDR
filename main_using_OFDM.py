@@ -21,7 +21,7 @@ spectrum_and_shift = lambda x: np.fft.fftshift(np.fft.fft(x))
 
 
 # Devices initialization
-sdrtx, sdrrx = devices.initialize_sdr(single_mode=False, tx='RED_PIMPLE_RX')
+sdrtx, sdrrx = devices.initialize_sdr(single_mode=True, tx='RED_PIMPLE_RX')
 
 
 sdrrx.tx_destroy_buffer()
