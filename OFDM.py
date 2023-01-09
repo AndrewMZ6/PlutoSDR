@@ -15,10 +15,9 @@ def SHIFT(s):
 
 
 def generate_ofdm_withpilots():
-    gsize = config.GUARD_SIZE    
     fftsize = config.FOURIER_SIZE
-    P = config.NUMBER_OF_PILOTS
-
+    gsize, P = config.GUARDS_AND_PILOTS[fftsize]
+    
     K = fftsize - 2*gsize - 1 + 1  # -1 of central zero, and +1 of right guard
 
     # indicies of all subcarriers
@@ -66,8 +65,9 @@ def generate_ofdm_withpilots():
 
 
 def degenerate_ofdm_withpilots(time_samples, carriersTuple):
-    gsize = config.GUARD_SIZE
+    
     fftsize = config.FOURIER_SIZE
+    gsize, P = config.GUARDS_AND_PILOTS[fftsize]
     spectrum = DFT(time_samples)
     spectrum = SHIFT(spectrum)
     removedZeros = np.concatenate([spectrum[gsize:int(fftsize/2)], spectrum[int(fftsize/2) + 1: -(gsize - 1)]])
@@ -79,8 +79,8 @@ def degenerate_ofdm_withpilots(time_samples, carriersTuple):
 
 
 def generate_ofdm_nopilots():
-    gsize = config.GUARD_SIZE    
     fftsize = config.FOURIER_SIZE
+    gsize, P = config.GUARDS_AND_PILOTS[fftsize]
 
     K = fftsize - 2*gsize - 1 + 1  # -1 of central zero, and +1 of right guard
 
@@ -107,8 +107,9 @@ def generate_ofdm_nopilots():
 
 
 def degenerate_ofdm_nopilots(time_samples):
-    gsize = config.GUARD_SIZE
+    
     fftsize = config.FOURIER_SIZE
+    gsize, P = config.GUARDS_AND_PILOTS[fftsize]
     spectrum = SHIFT(DFT(time_samples))
     removedZeros = np.concatenate([spectrum[gsize:int(fftsize/2)], spectrum[int(fftsize/2) + 1: -(gsize-1)]])
     print(f'removedZeros length: {len(removedZeros)}')
