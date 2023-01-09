@@ -29,6 +29,7 @@ sdrtx.rx_destroy_buffer()
 # Signal formation
 data_time_domain, carriersTuple, beets = OFDM.generate_ofdm_withpilots()
 
+print(f'bits len = {beets.size}')
 # Payload
 payload = np.tile(data_time_domain, config.NUMBER_OF_OFDM_SYMBOLS)
 
@@ -69,13 +70,24 @@ snr_array = np.array([])
 
 flag = True
 try:
+    
+    # Outer for loop with changing gain
     for ne in range(30):
 
-        N = 10
+        N = 100
         ber = 0
         snrdB = 0
-        for oo in range(N):
+        N_initial_skip = 50
 
+
+        accumulate_evm = np.array([])
+        inner_loop_counter = 0
+        inner_total_loop_counter = 0
+
+        # Inner while loop repeating measurements N times
+        while inner_loop_counter < N:
+
+            inner_total_loop_counter += 1
             # Receiving
             data_recieved = sdrrx.rx()
 
@@ -99,6 +111,17 @@ try:
             Hest = utils.channelEstimate(summed_ofdm_time_domain, carriersTuple)
             equalized_ofdm = boo/Hest
 
+            E = utils.calculateEVM(equalized_ofdm, carriersTuple[1], 1+1j)
+            accumulate_evm = np.append(accumulate_evm, E)        
+            s = np.sum(accumulate_evm)/inner_total_loop_counter
+
+            if inner_total_loop_counter < N_initial_skip:
+                continue
+
+            if E > s:
+                continue
+            
+            inner_loop_counter += 1
             eq_r = equalized_ofdm[carriersTuple[1]]
             
             M  = commpy.modulation.QAMModem(4)
@@ -109,25 +132,26 @@ try:
             
             ber += ber_pimple
 
-            E = utils.calculateEVM(equalized_ofdm, carriersTuple[1], 1+1j)
+            
+
             snr = 1/(E**2)
             snrdB += 10*np.log10(snr)
             
             
         
-        ber /= N
-        snrdB /= N
+        ber /= inner_loop_counter
+        snrdB /= inner_loop_counter
         
-        print(f'-> BER = {ber}')
+        #print(f'-> BER = {ber}')
            
-        print(f'-> SNR = {snrdB:.2f}')
+        #print(f'-> SNR = {snrdB:.2f}')
 
         snr_array = np.append(snr_array, snrdB)
         biterrs_array = np.append(biterrs_array, ber)
 
 
         sdrrx.rx_destroy_buffer()
-        print(f'\n-------- iteration {ne + 1} --------\n')
+        #print(f'\n-------- iteration {ne + 1} --------\n')
 
 
 
@@ -144,6 +168,9 @@ try:
 
 
         print(f'tx gain = {sdrtx.tx_hardwaregain_chan0}')
+        print(f'inner loop counter = {inner_loop_counter}')
+        print(f'inner total loop counter = {inner_total_loop_counter}')
+        print(f'good / not_good = {inner_loop_counter/(inner_total_loop_counter - N_initial_skip):.2f}')
         #plt.pause(1)
 
     
