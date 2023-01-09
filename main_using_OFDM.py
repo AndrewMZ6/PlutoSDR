@@ -74,10 +74,10 @@ try:
     # Outer for loop with changing gain
     for ne in range(30):
 
-        N = 50
+        N = 750
         ber = 0
         snrdB = 0
-        N_initial_skip = 50
+        N_initial_skip = 100
 
 
         accumulate_evm = np.array([])
